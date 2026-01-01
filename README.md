@@ -1,6 +1,4 @@
-Here is the raw Markdown code. You can copy this directly into your **README.md** file:
 
-```markdown
 # 📈 Mutual Fund Portfolio Analysis
 
 A standalone Python-based application designed to help users build and evaluate mutual fund portfolios. This tool allows for **dynamic portfolio creation** based on personal risk levels and provides deep insights into the performance of existing investments.
@@ -61,21 +59,6 @@ Contributions are welcome!
 
 ---
 
-*Developed by [Shashwat Deb*](https://www.google.com/search?q=https://github.com/Shashwat-deb)
-
-```
-
----
-
-### How to add this to your project:
-1. Open your project in **VS Code**.
-2. Click on the `README.md` file in the left sidebar.
-3. Delete everything inside it.
-4. Paste the code above.
-5. Save the file (`Cmd + S` or `Ctrl + S`).
-6. **Commit the change:**
-   * `git add README.md`
-   * `git commit -m "Update README with project details"`
-   * `git push origin main`
+*Developed by [Shashwat-deb*](https://github.com/Shashwat-deb)
 
 ```
