@@ -1,14 +1,29 @@
 
-# 📈 Mutual Fund Portfolio Analysis
+# 📈 MF Portfolio Pro
 
-A standalone Python-based application designed to help users build and evaluate mutual fund portfolios. This tool allows for **dynamic portfolio creation** based on personal risk levels and provides deep insights into the performance of existing investments.
+> **Advanced Mutual Fund Portfolio Analysis & Optimization**
+
+🚀 **[Live Demo](https://shashwat-mfportfolio.streamlit.app/)** | 📖 [Features](FEATURES.md) | 📝 [Walkthrough](WALKTHROUGH.md)
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://shashwat-mfportfolio.streamlit.app/)
+
+A comprehensive Python-based application for mutual fund portfolio analysis, optimization, and goal-based planning. Built with Streamlit and featuring advanced analytics powered by Modern Portfolio Theory.
 
 ## 🚀 Features
 
-* **Dynamic Portfolio Creation:** Tailor your investment strategy based on user-defined risk interventions (Low, Medium, High).
-* **Portfolio Assessment:** Analyze an existing portfolio to understand its risk-return profile.
-* **Data-Driven Insights:** Utilizes historical NAV (Net Asset Value) data to provide accurate analysis.
-* **User Interface:** Built with Python to provide a streamlined experience for financial analysis.
+### Core Capabilities
+* **📊 Dashboard** - KPI cards, metrics table, risk distribution charts
+* **🎯 Recommendations** - Risk-matched fund suggestions with detailed analytics
+* **💼 Portfolio Builder** - Custom allocation with Sharpe optimization & Efficient Frontier
+* **📈 Advanced Analytics** - Drawdown analysis, rolling metrics, head-to-head comparison
+* **🎯 Goal Planner** - SIP calculator with Monte Carlo simulation
+* **📥 Export** - CSV downloads and summary reports
+
+### Metrics Calculated
+* CAGR, Volatility, Sharpe Ratio, Sortino Ratio
+* Max Drawdown, Calmar Ratio, VaR (95%), CVaR (95%)
+* Period-wise returns (1M, 3M, 6M, 1Y, 3Y, 5Y)
+
 
 ## 📁 Project Structure
 
