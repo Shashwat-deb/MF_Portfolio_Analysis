@@ -1225,9 +1225,10 @@ with tab4:
         
         # Create comparison bar chart
         fig = go.Figure()
-        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#667eea"))
-        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#f5576c"))
-        fig.update_layout(barmode="group", template="plotly_dark", height=400)
+        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#0a0a0a"))
+        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#999999"))
+        fig.update_layout(barmode="group", height=400)
+        fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
         
         # NAV overlay
@@ -1243,7 +1244,8 @@ with tab4:
         
         combined = pd.concat([nav_a, nav_b])
         fig = px.line(combined, x="Date", y="NAV_Normalized", color="Fund", 
-                      title="Normalized NAV (Base 100)", template="plotly_dark")
+                      title="NORMALIZED NAV (BASE 100)", color_discrete_sequence=MONO_COLORS)
+        fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -1278,17 +1280,17 @@ with tab5:
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=months/12, y=projections, name="Projected Value", 
-                                 fill="tonexty", fillcolor="rgba(102, 126, 234, 0.3)",
-                                 line=dict(color="#667eea")))
+                                 fill="tonexty", fillcolor="rgba(10, 10, 10, 0.1)",
+                                 line=dict(color="#0a0a0a", width=2)))
         fig.add_trace(go.Scatter(x=months/12, y=invested, name="Amount Invested",
-                                 line=dict(color="#f5576c", dash="dash")))
+                                 line=dict(color="#666666", dash="dash", width=2)))
         fig.update_layout(
-            title="SIP Growth Projection",
+            title="SIP GROWTH PROJECTION",
             xaxis_title="Years",
             yaxis_title="Value (₹)",
-            template="plotly_dark",
             height=400
         )
+        fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
