@@ -12,109 +12,411 @@ from datetime import datetime, timedelta
 TRADING_DAYS = 252
 RISK_FREE_RATE = 0.04
 
-# ==================== CUSTOM STYLING ====================
+# ==================== CYCLOPS CLUB INSPIRED STYLING ====================
 def apply_custom_css():
     st.markdown("""
     <style>
-    /* Main container styling */
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    /* ========== ROOT VARIABLES ========== */
+    :root {
+        --bg-dark: #0a0a0a;
+        --bg-card: #ffffff;
+        --bg-muted: #f8f8f8;
+        --bg-accent: #1a1a1a;
+        --text-primary: #0a0a0a;
+        --text-muted: #666666;
+        --text-light: #999999;
+        --border: #e5e5e5;
+        --border-dark: #333333;
+    }
+    
+    /* ========== GLOBAL STYLES ========== */
     .main {
-        padding: 1rem 2rem;
+        background: var(--bg-muted) !important;
+        font-family: 'Space Grotesk', sans-serif !important;
     }
     
-    /* KPI Cards */
+    .stApp {
+        background: linear-gradient(180deg, #f8f8f8 0%, #ffffff 100%);
+    }
+    
+    /* ========== STEP NAVIGATOR ========== */
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 2rem 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2rem;
+    }
+    
+    .step-number {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 5rem;
+        font-weight: 700;
+        color: var(--bg-dark);
+        line-height: 1;
+        letter-spacing: -0.05em;
+    }
+    
+    .step-content {
+        flex: 1;
+    }
+    
+    .step-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+    
+    .step-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    
+    /* ========== KPI CARDS - CYCLOPS STYLE ========== */
     .kpi-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         padding: 1.5rem;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        transition: transform 0.3s ease;
+        border-radius: 0;
+        position: relative;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
     .kpi-card:hover {
-        transform: translateY(-5px);
+        border-color: var(--bg-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
     }
-    .kpi-value {
-        font-size: 2rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-    }
+    
     .kpi-label {
-        font-size: 0.9rem;
-        opacity: 0.9;
-    }
-    .kpi-trend-up {
-        color: #00ff88;
-    }
-    .kpi-trend-down {
-        color: #ff6b6b;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 500;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
     }
     
-    /* Section headers */
-    .section-header {
-        background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 1.8rem;
+    .kpi-value {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.5rem;
         font-weight: 700;
-        margin: 2rem 0 1rem 0;
+        color: var(--text-primary);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
     }
     
-    /* Card containers */
+    .kpi-sublabel {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        color: var(--text-light);
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+    }
+    
+    .kpi-indicator {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 8px;
+        height: 8px;
+        background: #0a0a0a;
+        border-radius: 50%;
+    }
+    
+    .kpi-indicator.live {
+        background: #00c853;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    /* ========== TECHNICAL LABELS ========== */
+    .tech-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .tech-label::before {
+        content: '●';
+        font-size: 0.5rem;
+        color: var(--text-light);
+    }
+    
+    .tech-value {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    
+    /* ========== HEADER - MINIMAL ========== */
+    .cyclops-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2rem;
+    }
+    
+    .cyclops-logo {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+    }
+    
+    .cyclops-status {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    
+    .rec-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+    }
+    
+    .rec-dot {
+        width: 6px;
+        height: 6px;
+        background: #ff3b30;
+        border-radius: 50%;
+        animation: blink 1.5s infinite;
+    }
+    
+    @keyframes blink {
+        0%, 50%, 100% { opacity: 1; }
+        25%, 75% { opacity: 0.3; }
+    }
+    
+    /* ========== TABS - STEP BASED ========== */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 0;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 0;
+        padding: 1rem 1.5rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-right: 1px solid var(--border);
+    }
+    
+    .stTabs [data-baseweb="tab"]:last-child {
+        border-right: none;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: var(--bg-dark) !important;
+        color: white !important;
+    }
+    
+    /* ========== CARDS & CONTAINERS ========== */
     .metric-card {
-        background: #1e1e2e;
-        padding: 1.2rem;
-        border-radius: 12px;
-        border: 1px solid #333;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 1.5rem;
         margin: 0.5rem 0;
     }
     
-    /* Tabs styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #262730;
-        border-radius: 8px;
-        padding: 10px 20px;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .data-grid {
+        display: grid;
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
     }
     
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    }
-    
-    /* Info boxes */
-    .info-box {
-        background: rgba(102, 126, 234, 0.1);
-        border-left: 4px solid #667eea;
+    .data-cell {
+        background: var(--bg-card);
         padding: 1rem;
-        border-radius: 0 8px 8px 0;
+    }
+    
+    /* ========== SIDEBAR - MINIMAL ========== */
+    section[data-testid="stSidebar"] {
+        background: var(--bg-card) !important;
+        border-right: 1px solid var(--border);
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: var(--text-primary);
+    }
+    
+    /* ========== BUTTONS ========== */
+    .stButton > button {
+        background: var(--bg-dark) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 0 !important;
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 0.7rem !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+        padding: 0.8rem 1.5rem !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stButton > button:hover {
+        background: #333 !important;
+        transform: translateY(-1px);
+    }
+    
+    /* ========== PROGRESS BAR ========== */
+    .progress-bar {
+        height: 4px;
+        background: var(--border);
         margin: 1rem 0;
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Success indicator */
-    .success-badge {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        color: white;
+    .progress-fill {
+        height: 100%;
+        background: var(--bg-dark);
+        transition: width 0.5s ease;
     }
     
-    /* Warning indicator */
-    .warning-badge {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
+    /* ========== SECTION HEADER ========== */
+    .section-header {
+        font-family: 'Space Grotesk', sans-serif;
         font-size: 0.8rem;
-        color: white;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-primary);
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+        margin: 2rem 0 1.5rem 0;
     }
+    
+    /* ========== FUND CARDS - MINIMAL ========== */
+    .fund-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .fund-card:hover {
+        border-color: var(--bg-dark);
+    }
+    
+    .fund-name {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+    
+    .fund-metric {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .fund-metric:last-child {
+        border-bottom: none;
+    }
+    
+    /* ========== ANIMATIONS ========== */
+    .fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* ========== TEXT VISIBILITY FIXES ========== */
+    .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+        color: #0a0a0a !important;
+    }
+    
+    .stMetric label, .stMetric [data-testid="stMetricLabel"] {
+        color: #666666 !important;
+    }
+    
+    .stMetric [data-testid="stMetricValue"] {
+        color: #0a0a0a !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 700 !important;
+    }
+    
+    .stMetric [data-testid="stMetricDelta"] {
+        color: #333333 !important;
+    }
+    
+    .stCaption, .stCaption p {
+        color: #666666 !important;
+    }
+    
+    .stDataFrame, .stDataFrame th, .stDataFrame td {
+        color: #0a0a0a !important;
+    }
+    
+    .stSelectbox label, .stMultiSelect label, .stSlider label {
+        color: #0a0a0a !important;
+    }
+    
+    .stWarning, .stInfo, .stSuccess, .stError {
+        color: #0a0a0a !important;
+    }
+    
+    /* Fix text inputs */
+    .stTextInput label, .stNumberInput label {
+        color: #0a0a0a !important;
+    }
+    
+    /* ========== HIDE STREAMLIT BRANDING ========== */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
     </style>
     """, unsafe_allow_html=True)
+
 
 
 # ==================== CORE METRIC FUNCTIONS ====================
@@ -366,24 +668,42 @@ def calculate_goal_probability(target, monthly_sip, years, historical_returns):
     return successes / n_simulations
 
 
+# ==================== MONOCHROME CHART CONFIG ====================
+MONO_COLORS = ["#0a0a0a", "#333333", "#666666", "#999999", "#cccccc"]
+MONO_LAYOUT = {
+    "template": "plotly_white",
+    "paper_bgcolor": "#ffffff",
+    "plot_bgcolor": "#ffffff",
+    "font": {"family": "Space Grotesk, sans-serif", "color": "#0a0a0a"},
+    "title": {"font": {"size": 14, "weight": 600}},
+    "xaxis": {"gridcolor": "#e5e5e5", "linecolor": "#e5e5e5"},
+    "yaxis": {"gridcolor": "#e5e5e5", "linecolor": "#e5e5e5"}
+}
+
+def apply_mono_layout(fig):
+    """Apply monochrome Cyclops Club styling to Plotly figure"""
+    fig.update_layout(**MONO_LAYOUT)
+    return fig
+
+
 # ==================== VISUALIZATION FUNCTIONS ====================
 def create_nav_chart(navdf, selected_schemes):
-    """Create interactive NAV chart"""
+    """Create interactive NAV chart - Monochrome"""
     fig = px.line(
         navdf, x="Date", y="NAV", color="Scheme Name",
-        title="NAV History",
-        template="plotly_dark"
+        title="NAV HISTORY",
+        color_discrete_sequence=MONO_COLORS
     )
     fig.update_layout(
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
         height=500
     )
-    return fig
+    return apply_mono_layout(fig)
 
 
 def create_drawdown_chart(nav_series, scheme_name):
-    """Create drawdown visualization"""
+    """Create drawdown visualization - Monochrome"""
     running_max = nav_series.cummax()
     drawdown = (nav_series / running_max - 1) * 100
     
@@ -391,61 +711,59 @@ def create_drawdown_chart(nav_series, scheme_name):
     fig.add_trace(go.Scatter(
         x=nav_series.index, y=drawdown,
         fill="tozeroy",
-        fillcolor="rgba(255, 107, 107, 0.3)",
-        line=dict(color="#ff6b6b", width=2),
+        fillcolor="rgba(10, 10, 10, 0.1)",
+        line=dict(color="#0a0a0a", width=2),
         name="Drawdown"
     ))
     fig.update_layout(
-        title=f"Drawdown Analysis - {scheme_name}",
+        title=f"DRAWDOWN ANALYSIS — {scheme_name.upper()}",
         yaxis_title="Drawdown (%)",
-        template="plotly_dark",
         height=400
     )
-    return fig
+    return apply_mono_layout(fig)
 
 
 def create_correlation_heatmap(returns_df):
-    """Create correlation heatmap"""
+    """Create correlation heatmap - Monochrome"""
     corr = returns_df.corr()
     
     fig = px.imshow(
         corr,
         text_auto=".2f",
-        color_continuous_scale="RdBu_r",
+        color_continuous_scale=[[0, "#ffffff"], [0.5, "#666666"], [1, "#0a0a0a"]],
         aspect="auto",
-        title="Fund Correlation Matrix"
+        title="CORRELATION MATRIX"
     )
-    fig.update_layout(template="plotly_dark", height=500)
-    return fig
+    fig.update_layout(height=500)
+    return apply_mono_layout(fig)
 
 
 def create_rolling_metrics_chart(dates, rolling_ret, rolling_vol, scheme_name):
-    """Create rolling metrics chart"""
+    """Create rolling metrics chart - Monochrome"""
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
-                        subplot_titles=("Rolling Returns", "Rolling Volatility"))
+                        subplot_titles=("ROLLING RETURNS", "ROLLING VOLATILITY"))
     
     fig.add_trace(
         go.Scatter(x=dates, y=rolling_ret * 100, name="Return", 
-                   line=dict(color="#667eea")),
+                   line=dict(color="#0a0a0a", width=2)),
         row=1, col=1
     )
     fig.add_trace(
         go.Scatter(x=dates, y=rolling_vol * 100, name="Volatility",
-                   line=dict(color="#f5576c")),
+                   line=dict(color="#666666", width=2)),
         row=2, col=1
     )
     
     fig.update_layout(
-        title=f"Rolling Metrics (30-day) - {scheme_name}",
-        template="plotly_dark",
+        title=f"ROLLING METRICS (30-DAY) — {scheme_name.upper()}",
         height=500,
         showlegend=True
     )
-    return fig
+    return apply_mono_layout(fig)
 
 
 def create_period_comparison_chart(metrics_df, selected_schemes):
-    """Create period return comparison chart"""
+    """Create period return comparison chart - Monochrome"""
     period_cols = ["Return_1M", "Return_3M", "Return_6M", "Return_1Y", "Return_3Y", "Return_5Y"]
     available_cols = [c for c in period_cols if c in metrics_df.columns]
     
@@ -456,31 +774,31 @@ def create_period_comparison_chart(metrics_df, selected_schemes):
     fig = px.bar(
         df_melted, x="Period", y="Return", color="Scheme",
         barmode="group",
-        title="Period-wise Return Comparison",
-        template="plotly_dark"
+        title="PERIOD-WISE RETURNS",
+        color_discrete_sequence=MONO_COLORS
     )
     fig.update_layout(
         yaxis_tickformat=".1%",
         height=400
     )
-    return fig
+    return apply_mono_layout(fig)
 
 
 def create_allocation_pie(weights, scheme_names):
-    """Create portfolio allocation pie chart"""
+    """Create portfolio allocation pie chart - Monochrome"""
     fig = px.pie(
         values=weights * 100,
         names=scheme_names,
-        title="Portfolio Allocation",
-        template="plotly_dark",
-        hole=0.4
+        title="PORTFOLIO ALLOCATION",
+        hole=0.4,
+        color_discrete_sequence=MONO_COLORS
     )
     fig.update_traces(textposition="inside", textinfo="percent+label")
-    return fig
+    return apply_mono_layout(fig)
 
 
 def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, current_vol):
-    """Create efficient frontier visualization"""
+    """Create efficient frontier visualization - Monochrome"""
     fig = go.Figure()
     
     # Efficient frontier
@@ -489,7 +807,7 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
         y=np.array(frontier_rets) * 100,
         mode="lines",
         name="Efficient Frontier",
-        line=dict(color="#667eea", width=3)
+        line=dict(color="#0a0a0a", width=3)
     ))
     
     # Current portfolio
@@ -498,51 +816,53 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
         y=[current_ret * 100],
         mode="markers",
         name="Current Portfolio",
-        marker=dict(size=15, color="#f5576c", symbol="star")
+        marker=dict(size=15, color="#333333", symbol="diamond")
     ))
     
     fig.update_layout(
-        title="Efficient Frontier",
+        title="EFFICIENT FRONTIER",
         xaxis_title="Volatility (%)",
         yaxis_title="Expected Return (%)",
-        template="plotly_dark",
         height=500
     )
-    return fig
+    return apply_mono_layout(fig)
 
 
 # ==================== DISPLAY FUNCTIONS ====================
 def display_kpi_cards(metrics_df):
-    """Display KPI summary cards"""
+    """Display KPI summary cards - Cyclops Club style"""
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         avg_cagr = metrics_df["CAGR"].mean() * 100
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-label">Avg CAGR</div>
+            <div class="kpi-indicator live"></div>
+            <div class="kpi-label">METRIC: CAGR</div>
             <div class="kpi-value">{avg_cagr:.1f}%</div>
-            <div class="kpi-trend-{'up' if avg_cagr > 0 else 'down'}">{'▲' if avg_cagr > 0 else '▼'}</div>
+            <div class="kpi-sublabel">ANNUALIZED RETURN</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         avg_sharpe = metrics_df["Sharpe"].mean()
         st.markdown(f"""
-        <div class="kpi-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
-            <div class="kpi-label">Avg Sharpe</div>
+        <div class="kpi-card">
+            <div class="kpi-indicator"></div>
+            <div class="kpi-label">METRIC: SHARPE</div>
             <div class="kpi-value">{avg_sharpe:.2f}</div>
-            <div class="kpi-trend-{'up' if avg_sharpe > 1 else 'down'}">{'▲' if avg_sharpe > 1 else '●'}</div>
+            <div class="kpi-sublabel">RISK-ADJUSTED</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         total_funds = len(metrics_df)
         st.markdown(f"""
-        <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <div class="kpi-label">Total Funds</div>
+        <div class="kpi-card">
+            <div class="kpi-indicator"></div>
+            <div class="kpi-label">STATUS: ACTIVE</div>
             <div class="kpi-value">{total_funds}</div>
-            <div class="kpi-trend-up">Analyzed</div>
+            <div class="kpi-sublabel">FUNDS ANALYZED</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -550,10 +870,11 @@ def display_kpi_cards(metrics_df):
         best_fund = metrics_df.loc[metrics_df["MFScore"].idxmax(), "Scheme"]
         best_score = metrics_df["MFScore"].max()
         st.markdown(f"""
-        <div class="kpi-card" style="background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);">
-            <div class="kpi-label">Top Performer</div>
-            <div class="kpi-value" style="font-size: 1rem;">{best_fund[:15]}...</div>
-            <div class="kpi-trend-up">Score: {best_score:.2f}</div>
+        <div class="kpi-card">
+            <div class="kpi-indicator live"></div>
+            <div class="kpi-label">TOP PERFORMER</div>
+            <div class="kpi-value" style="font-size: 1.2rem;">{best_fund[:18]}</div>
+            <div class="kpi-sublabel">SCORE: {best_score:.2f}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -561,30 +882,39 @@ def display_kpi_cards(metrics_df):
 # ==================== MAIN APP ====================
 st.set_page_config(
     page_title="MF Portfolio Pro",
-    page_icon="📈",
+    page_icon="◼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 apply_custom_css()
 
-# Header
+# Cyclops-style Header
 st.markdown("""
-<div style="text-align: center; padding: 2rem 0;">
-    <h1 style="background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f5576c 100%);
-               -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-               font-size: 3rem; font-weight: 800;">
-        📈 MF Portfolio Pro
-    </h1>
-    <p style="color: #888; font-size: 1.2rem;">
-        Advanced Mutual Fund Analysis & Portfolio Optimization
-    </p>
+<div class="cyclops-header">
+    <div class="cyclops-logo">MF PORTFOLIO PRO</div>
+    <div class="cyclops-status">
+        <span class="tech-label">SERVICE: <span class="tech-value">PORTFOLIO ANALYSIS</span></span>
+        <span class="tech-label">MODE: <span class="tech-value">ACTIVE</span></span>
+        <div class="rec-indicator">
+            <div class="rec-dot"></div>
+            <span>LIVE</span>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar
-st.sidebar.image("https://img.icons8.com/fluency/96/stocks-growth.png", width=80)
-st.sidebar.markdown("### 🎛️ Control Panel")
+# Sidebar - Minimal
+st.sidebar.markdown("""
+<div style="padding: 1rem 0; border-bottom: 1px solid #e5e5e5; margin-bottom: 1rem;">
+    <div style="font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: #0a0a0a;">
+        CONTROL PANEL
+    </div>
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: #999; margin-top: 0.25rem;">
+        SYSTEM CONFIGURATION
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Demo mode toggle
 demo_mode = st.sidebar.checkbox("🎮 Demo Mode", value=True, help="Load sample data automatically")
@@ -642,14 +972,14 @@ display_kpi_cards(metrics_df)
 
 st.markdown("---")
 
-# Main tabs
+# Main tabs - Step based navigation
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 Dashboard",
-    "🎯 Recommendations", 
-    "💼 Portfolio Builder",
-    "📈 Analytics",
-    "🎯 Goal Planner",
-    "📥 Export"
+    "01 DASHBOARD",
+    "02 RECOMMENDATIONS", 
+    "03 PORTFOLIO",
+    "04 ANALYTICS",
+    "05 GOALS",
+    "06 EXPORT"
 ])
 
 # ==================== TAB 1: DASHBOARD ====================
@@ -688,22 +1018,24 @@ with tab1:
     # Risk distribution
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("#### Risk Class Distribution")
+        st.markdown("#### RISK CLASS DISTRIBUTION")
         dist = metrics_df["RiskClass"].value_counts()
         fig = px.pie(values=dist.values, names=dist.index, hole=0.4, 
-                     template="plotly_dark", color_discrete_sequence=px.colors.qualitative.Set2)
+                     color_discrete_sequence=MONO_COLORS)
+        fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("#### Sharpe vs Volatility")
+        st.markdown("#### SHARPE VS VOLATILITY")
         fig = px.scatter(
             metrics_df, x="Volatility", y="Sharpe", color="RiskClass",
             size="CAGR", hover_name="Scheme",
-            template="plotly_dark"
+            color_discrete_sequence=MONO_COLORS
         )
         fig.update_layout(
             xaxis_tickformat=".1%"
         )
+        fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
 
 
