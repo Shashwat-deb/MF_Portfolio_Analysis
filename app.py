@@ -591,8 +591,12 @@ demo_mode = st.sidebar.checkbox("🎮 Demo Mode", value=True, help="Load sample 
 
 if demo_mode:
     # Load sample data
+    import os
     try:
-        df_raw = pd.read_csv("/Users/shashwat/Desktop/MF_Portfolio_Analysis/mutual_funds_nav_dummy.csv")
+        # Use relative path for cloud deployment
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        csv_path = os.path.join(script_dir, "mutual_funds_nav_dummy.csv")
+        df_raw = pd.read_csv(csv_path)
         st.sidebar.success("✅ Demo data loaded!")
     except:
         st.sidebar.error("Could not load demo data")
