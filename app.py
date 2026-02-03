@@ -3,10 +3,14 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 from plotly.subplots import make_subplots
 from scipy.optimize import minimize
 import io
 from datetime import datetime, timedelta
+
+# Set seaborn as the global default template for ALL charts
+pio.templates.default = "seaborn"
 
 # ==================== CONSTANTS ====================
 TRADING_DAYS = 252
