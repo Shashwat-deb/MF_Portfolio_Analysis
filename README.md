@@ -22,7 +22,6 @@ A standalone Python-based application designed to help users build and evaluate 
    ```bash
    git clone [https://github.com/Shashwat-deb/MF_Portfolio_Analysis.git](https://github.com/Shashwat-deb/MF_Portfolio_Analysis.git)
    cd MF_Portfolio_Analysis
-
 ```
 
 2. **Install Dependencies:**
