@@ -668,20 +668,17 @@ def calculate_goal_probability(target, monthly_sip, years, historical_returns):
     return successes / n_simulations
 
 
-# ==================== MONOCHROME CHART CONFIG ====================
-MONO_COLORS = ["#0a0a0a", "#333333", "#666666", "#999999", "#cccccc"]
+# ==================== SEABORN CHART CONFIG ====================
+# Using Plotly's built-in seaborn template for clean, readable charts
+MONO_COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
 MONO_LAYOUT = {
-    "template": "plotly_white",
-    "paper_bgcolor": "#ffffff",
-    "plot_bgcolor": "#ffffff",
-    "font": {"family": "Space Grotesk, sans-serif", "color": "#0a0a0a"},
-    "title": {"font": {"size": 14, "weight": 600}},
-    "xaxis": {"gridcolor": "#e5e5e5", "linecolor": "#e5e5e5"},
-    "yaxis": {"gridcolor": "#e5e5e5", "linecolor": "#e5e5e5"}
+    "template": "seaborn",
+    "font": {"family": "Space Grotesk, sans-serif"},
+    "title": {"font": {"size": 14, "weight": 600}}
 }
 
 def apply_mono_layout(fig):
-    """Apply monochrome Cyclops Club styling to Plotly figure"""
+    """Apply seaborn styling to Plotly figure"""
     fig.update_layout(**MONO_LAYOUT)
     return fig
 
@@ -1225,8 +1222,8 @@ with tab4:
         
         # Create comparison bar chart
         fig = go.Figure()
-        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#0a0a0a"))
-        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#999999"))
+        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#4C72B0"))
+        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#55A868"))
         fig.update_layout(barmode="group", height=400)
         fig = apply_mono_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
@@ -1280,10 +1277,10 @@ with tab5:
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=months/12, y=projections, name="Projected Value", 
-                                 fill="tonexty", fillcolor="rgba(10, 10, 10, 0.1)",
-                                 line=dict(color="#0a0a0a", width=2)))
+                                 fill="tonexty", fillcolor="rgba(76, 114, 176, 0.2)",
+                                 line=dict(color="#4C72B0", width=2)))
         fig.add_trace(go.Scatter(x=months/12, y=invested, name="Amount Invested",
-                                 line=dict(color="#666666", dash="dash", width=2)))
+                                 line=dict(color="#C44E52", dash="dash", width=2)))
         fig.update_layout(
             title="SIP GROWTH PROJECTION",
             xaxis_title="Years",
