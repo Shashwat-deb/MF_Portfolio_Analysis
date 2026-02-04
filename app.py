@@ -700,10 +700,14 @@ def apply_mono_layout(fig):
 # ==================== VISUALIZATION FUNCTIONS ====================
 def create_nav_chart(navdf, selected_schemes):
     """Create interactive NAV chart - Light theme with vibrant colors"""
+    # Create explicit color mapping for each scheme to ensure vibrant colors are applied
+    unique_schemes = navdf["Scheme Name"].unique().tolist()
+    color_map = {scheme: VIBRANT_COLORS[i % len(VIBRANT_COLORS)] for i, scheme in enumerate(unique_schemes)}
+    
     fig = px.line(
         navdf, x="Date", y="NAV", color="Scheme Name",
         title="NAV HISTORY",
-        color_discrete_sequence=VIBRANT_COLORS
+        color_discrete_map=color_map
     )
     # Make lines thicker for better visibility
     fig.update_traces(line=dict(width=2.5))
