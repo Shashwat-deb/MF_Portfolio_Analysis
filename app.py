@@ -9,8 +9,8 @@ from scipy.optimize import minimize
 import io
 from datetime import datetime, timedelta
 
-# Set seaborn as the global default template for ALL charts
-pio.templates.default = "seaborn"
+# Set plotly_white as the global default template for ALL charts (light theme)
+pio.templates.default = "plotly_white"
 
 # ==================== CONSTANTS ====================
 TRADING_DAYS = 252
@@ -672,39 +672,51 @@ def calculate_goal_probability(target, monthly_sip, years, historical_returns):
     return successes / n_simulations
 
 
-# ==================== SEABORN CHART CONFIG ====================
-# Using Plotly's built-in seaborn template for clean, readable charts
-MONO_COLORS = ["#4C72B0", "#55A868", "#C44E52", "#8172B2", "#CCB974", "#64B5CD"]
-MONO_LAYOUT = {
-    "template": "seaborn",
-    "font": {"family": "Space Grotesk, sans-serif"},
-    "title": {"font": {"size": 14, "weight": 600}}
+# ==================== LIGHT THEME CHART CONFIG ====================
+# Using vibrant, high-contrast colors for readability on light backgrounds
+VIBRANT_COLORS = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ca8a04", "#0891b2", "#c026d3", "#ea580c"]
+
+# Light theme layout configuration
+LIGHT_LAYOUT = {
+    "template": "plotly_white",
+    "font": {"family": "Space Grotesk, sans-serif", "color": "#0a0a0a"},
+    "title": {"font": {"size": 14, "weight": 600, "color": "#0a0a0a"}},
+    "paper_bgcolor": "#ffffff",
+    "plot_bgcolor": "#ffffff",
+    "xaxis": {"gridcolor": "#e5e5e5", "linecolor": "#cccccc", "tickcolor": "#666666", "tickfont": {"color": "#333333"}},
+    "yaxis": {"gridcolor": "#e5e5e5", "linecolor": "#cccccc", "tickcolor": "#666666", "tickfont": {"color": "#333333"}},
+    "legend": {"font": {"color": "#0a0a0a"}}
 }
 
+# Keep MONO_COLORS for backward compatibility
+MONO_COLORS = VIBRANT_COLORS
+
 def apply_mono_layout(fig):
-    """Apply seaborn styling to Plotly figure"""
-    fig.update_layout(**MONO_LAYOUT)
+    """Apply light theme styling to Plotly figure"""
+    fig.update_layout(**LIGHT_LAYOUT)
     return fig
 
 
 # ==================== VISUALIZATION FUNCTIONS ====================
 def create_nav_chart(navdf, selected_schemes):
-    """Create interactive NAV chart - Monochrome"""
+    """Create interactive NAV chart - Light theme with vibrant colors"""
     fig = px.line(
         navdf, x="Date", y="NAV", color="Scheme Name",
         title="NAV HISTORY",
-        color_discrete_sequence=MONO_COLORS
+        color_discrete_sequence=VIBRANT_COLORS
     )
+    # Make lines thicker for better visibility
+    fig.update_traces(line=dict(width=2.5))
     fig.update_layout(
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(color="#0a0a0a")),
         height=500
     )
     return apply_mono_layout(fig)
 
 
 def create_drawdown_chart(nav_series, scheme_name):
-    """Create drawdown visualization - Monochrome"""
+    """Create drawdown visualization - Light theme"""
     running_max = nav_series.cummax()
     drawdown = (nav_series / running_max - 1) * 100
     
@@ -712,8 +724,8 @@ def create_drawdown_chart(nav_series, scheme_name):
     fig.add_trace(go.Scatter(
         x=nav_series.index, y=drawdown,
         fill="tozeroy",
-        fillcolor="rgba(10, 10, 10, 0.1)",
-        line=dict(color="#0a0a0a", width=2),
+        fillcolor="rgba(220, 38, 38, 0.15)",
+        line=dict(color="#dc2626", width=2),
         name="Drawdown"
     ))
     fig.update_layout(
@@ -725,33 +737,34 @@ def create_drawdown_chart(nav_series, scheme_name):
 
 
 def create_correlation_heatmap(returns_df):
-    """Create correlation heatmap - Monochrome"""
+    """Create correlation heatmap - Light theme with readable colors"""
     corr = returns_df.corr()
     
     fig = px.imshow(
         corr,
         text_auto=".2f",
-        color_continuous_scale=[[0, "#ffffff"], [0.5, "#666666"], [1, "#0a0a0a"]],
+        color_continuous_scale=[[0, "#eff6ff"], [0.5, "#3b82f6"], [1, "#1e3a8a"]],
         aspect="auto",
         title="CORRELATION MATRIX"
     )
     fig.update_layout(height=500)
+    fig.update_traces(textfont=dict(color="#0a0a0a", size=12))
     return apply_mono_layout(fig)
 
 
 def create_rolling_metrics_chart(dates, rolling_ret, rolling_vol, scheme_name):
-    """Create rolling metrics chart - Monochrome"""
+    """Create rolling metrics chart - Light theme with vibrant colors"""
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                         subplot_titles=("ROLLING RETURNS", "ROLLING VOLATILITY"))
     
     fig.add_trace(
         go.Scatter(x=dates, y=rolling_ret * 100, name="Return", 
-                   line=dict(color="#0a0a0a", width=2)),
+                   line=dict(color="#2563eb", width=2.5)),
         row=1, col=1
     )
     fig.add_trace(
         go.Scatter(x=dates, y=rolling_vol * 100, name="Volatility",
-                   line=dict(color="#666666", width=2)),
+                   line=dict(color="#ea580c", width=2.5)),
         row=2, col=1
     )
     
@@ -764,7 +777,7 @@ def create_rolling_metrics_chart(dates, rolling_ret, rolling_vol, scheme_name):
 
 
 def create_period_comparison_chart(metrics_df, selected_schemes):
-    """Create period return comparison chart - Monochrome"""
+    """Create period return comparison chart - Light theme"""
     period_cols = ["Return_1M", "Return_3M", "Return_6M", "Return_1Y", "Return_3Y", "Return_5Y"]
     available_cols = [c for c in period_cols if c in metrics_df.columns]
     
@@ -776,7 +789,7 @@ def create_period_comparison_chart(metrics_df, selected_schemes):
         df_melted, x="Period", y="Return", color="Scheme",
         barmode="group",
         title="PERIOD-WISE RETURNS",
-        color_discrete_sequence=MONO_COLORS
+        color_discrete_sequence=VIBRANT_COLORS
     )
     fig.update_layout(
         yaxis_tickformat=".1%",
@@ -786,20 +799,20 @@ def create_period_comparison_chart(metrics_df, selected_schemes):
 
 
 def create_allocation_pie(weights, scheme_names):
-    """Create portfolio allocation pie chart - Monochrome"""
+    """Create portfolio allocation pie chart - Light theme"""
     fig = px.pie(
         values=weights * 100,
         names=scheme_names,
         title="PORTFOLIO ALLOCATION",
         hole=0.4,
-        color_discrete_sequence=MONO_COLORS
+        color_discrete_sequence=VIBRANT_COLORS
     )
-    fig.update_traces(textposition="inside", textinfo="percent+label")
+    fig.update_traces(textposition="inside", textinfo="percent+label", textfont=dict(color="white", size=12))
     return apply_mono_layout(fig)
 
 
 def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, current_vol):
-    """Create efficient frontier visualization - Monochrome"""
+    """Create efficient frontier visualization - Light theme"""
     fig = go.Figure()
     
     # Efficient frontier
@@ -808,7 +821,7 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
         y=np.array(frontier_rets) * 100,
         mode="lines",
         name="Efficient Frontier",
-        line=dict(color="#0a0a0a", width=3)
+        line=dict(color="#2563eb", width=3)
     ))
     
     # Current portfolio
@@ -817,7 +830,7 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
         y=[current_ret * 100],
         mode="markers",
         name="Current Portfolio",
-        marker=dict(size=15, color="#333333", symbol="diamond")
+        marker=dict(size=15, color="#dc2626", symbol="diamond")
     ))
     
     fig.update_layout(
@@ -1024,7 +1037,7 @@ with tab1:
         fig = px.pie(values=dist.values, names=dist.index, hole=0.4, 
                      color_discrete_sequence=MONO_COLORS)
         fig = apply_mono_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
     
     with col2:
         st.markdown("#### SHARPE VS VOLATILITY")
@@ -1037,7 +1050,7 @@ with tab1:
             xaxis_tickformat=".1%"
         )
         fig = apply_mono_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
 # ==================== TAB 2: RECOMMENDATIONS ====================
@@ -1072,12 +1085,12 @@ with tab2:
         rec_schemes = subset["Scheme"].tolist()
         navdf = df_raw[df_raw["Scheme Name"].isin(rec_schemes)][["Date", "Scheme Name", "NAV"]]
         fig = create_nav_chart(navdf, rec_schemes)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
         
         # Period comparison
         st.markdown("#### Period-wise Returns")
         fig = create_period_comparison_chart(metrics_df, rec_schemes)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
 # ==================== TAB 3: PORTFOLIO BUILDER ====================
@@ -1133,7 +1146,7 @@ with tab3:
         with col2:
             st.markdown("#### Allocation Visualization")
             fig = create_allocation_pie(weight_array, selected_funds)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, theme=None)
         
         # Optimization
         st.markdown("---")
@@ -1161,7 +1174,7 @@ with tab3:
         st.markdown("---")
         st.markdown("#### 🔗 Correlation Analysis")
         fig = create_correlation_heatmap(returns_pivot[selected_funds])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
         
         # Efficient frontier
         st.markdown("#### 📈 Efficient Frontier")
@@ -1170,7 +1183,7 @@ with tab3:
                 frontier_rets, frontier_vols = generate_efficient_frontier(returns_pivot[selected_funds])
                 if frontier_rets:
                     fig = create_efficient_frontier_chart(frontier_rets, frontier_vols, port_ret, port_vol)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, theme=None)
                 else:
                     st.warning("Could not generate efficient frontier with current funds.")
     else:
@@ -1193,14 +1206,14 @@ with tab4:
         # Drawdown chart
         st.markdown("#### Drawdown Analysis")
         fig = create_drawdown_chart(fund_data["NAV"], selected_fund)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
     
     with col2:
         # Rolling metrics
         st.markdown("#### Rolling Metrics (30-day)")
         rolling_ret, rolling_vol = calculate_rolling_metrics(fund_data["NAV"], fund_data["Return"], 30)
         fig = create_rolling_metrics_chart(rolling_vol.index, rolling_ret, rolling_vol, selected_fund)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
     
     # Head-to-head comparison
     st.markdown("---")
@@ -1226,11 +1239,11 @@ with tab4:
         
         # Create comparison bar chart
         fig = go.Figure()
-        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#4C72B0"))
-        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#55A868"))
+        fig.add_trace(go.Bar(name=fund_a[:20], x=comparison_metrics, y=comp_df[fund_a], marker_color="#2563eb"))
+        fig.add_trace(go.Bar(name=fund_b[:20], x=comparison_metrics, y=comp_df[fund_b], marker_color="#16a34a"))
         fig.update_layout(barmode="group", height=400)
         fig = apply_mono_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
         
         # NAV overlay
         st.markdown("#### NAV Comparison")
@@ -1245,9 +1258,10 @@ with tab4:
         
         combined = pd.concat([nav_a, nav_b])
         fig = px.line(combined, x="Date", y="NAV_Normalized", color="Fund", 
-                      title="NORMALIZED NAV (BASE 100)", color_discrete_sequence=MONO_COLORS)
+                      title="NORMALIZED NAV (BASE 100)", color_discrete_sequence=VIBRANT_COLORS)
+        fig.update_traces(line=dict(width=2.5))
         fig = apply_mono_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
 # ==================== TAB 5: GOAL PLANNER ====================
@@ -1281,10 +1295,10 @@ with tab5:
         
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=months/12, y=projections, name="Projected Value", 
-                                 fill="tonexty", fillcolor="rgba(76, 114, 176, 0.2)",
-                                 line=dict(color="#4C72B0", width=2)))
+                                 fill="tonexty", fillcolor="rgba(37, 99, 235, 0.2)",
+                                 line=dict(color="#2563eb", width=2.5)))
         fig.add_trace(go.Scatter(x=months/12, y=invested, name="Amount Invested",
-                                 line=dict(color="#C44E52", dash="dash", width=2)))
+                                 line=dict(color="#dc2626", dash="dash", width=2.5)))
         fig.update_layout(
             title="SIP GROWTH PROJECTION",
             xaxis_title="Years",
@@ -1292,7 +1306,7 @@ with tab5:
             height=400
         )
         fig = apply_mono_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, theme=None)
     
     with col2:
         st.markdown("#### 🎯 Goal Tracker")
