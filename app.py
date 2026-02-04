@@ -1422,7 +1422,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 2rem 0; color: #666;">
-    <p>Built with ❤️ using Streamlit | Mutual Fund Portfolio Pro v2.0</p>
+    <p>Built with ❤️ by Shashwat | Mutual Fund Portfolio Pro</p>
     <p style="font-size: 0.8rem;">Disclaimer: This tool is for educational purposes only. Past performance is not indicative of future results.</p>
 </div>
 """, unsafe_allow_html=True)
