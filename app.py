@@ -846,6 +846,201 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
     return apply_mono_layout(fig)
 
 
+# ==================== CATEGORY CLASSIFICATION ====================
+CATEGORY_KEYWORDS = {
+    "Large Cap": ["largecap", "large cap", "large-cap", "bluechip", "nifty 50", "sensex"],
+    "Mid Cap": ["midcap", "mid cap", "mid-cap"],
+    "Small Cap": ["smallcap", "small cap", "small-cap", "micro cap"],
+    "Flexi Cap": ["flexicap", "flexi cap", "flexi-cap", "multicap", "multi cap"],
+    "Hybrid": ["hybrid", "balanced", "multiasset", "multi asset", "multi-asset", "aggressive hybrid"],
+    "Debt": ["bond", "debt", "gilt", "income", "liquid", "money market", "corporate bond", "credit risk"],
+    "Index": ["index", "etf", "nifty", "sensex tracker"],
+    "Value": ["value", "contra", "dividend yield"],
+    "Sectoral": ["sectoral", "thematic", "pharma", "banking", "infra", "technology", "consumption"],
+    "Equity": ["equity"],  # Broad fallback — must be checked last
+}
+
+
+def infer_category(scheme_name: str) -> str:
+    """Infer mutual fund category from scheme name using keyword matching."""
+    name_lower = scheme_name.lower()
+    # Check specific categories first (order matters — Equity is the broad fallback)
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        if category == "Equity":
+            continue
+        for kw in keywords:
+            if kw in name_lower:
+                return category
+    # Fallback to broad Equity if 'equity' is in name
+    if "equity" in name_lower:
+        return "Equity"
+    return "Other"
+
+
+def assign_categories(metrics_df: pd.DataFrame) -> pd.DataFrame:
+    """Vectorised category assignment using the keyword map."""
+    metrics_df = metrics_df.copy()
+    if "Category" not in metrics_df.columns:
+        metrics_df["Category"] = metrics_df["Scheme"].apply(infer_category)
+    return metrics_df
+
+
+# ==================== CATEGORY METRICS (CACHED) ====================
+@st.cache_data
+def compute_category_metrics(_metrics_df):
+    """Aggregate metrics per category — fully vectorised."""
+    agg = _metrics_df.groupby("Category").agg(
+        AvgCAGR=("CAGR", "mean"),
+        AvgSharpe=("Sharpe", "mean"),
+        AvgVolatility=("Volatility", "mean"),
+        AvgMaxDD=("MaxDrawdown", lambda x: x.abs().mean()),
+        FundCount=("Scheme", "count"),
+        AvgMFScore=("MFScore", "mean"),
+    ).reset_index()
+    return agg
+
+
+@st.cache_data
+def top_fund_per_category(_metrics_df):
+    """Best fund in each category by MFScore."""
+    idx = _metrics_df.groupby("Category")["MFScore"].idxmax()
+    return _metrics_df.loc[idx, ["Category", "Scheme", "CAGR", "Sharpe", "MFScore"]].reset_index(drop=True)
+
+
+# ==================== CATEGORY CHART BUILDERS ====================
+def plot_category_bar(cat_metrics):
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="Avg CAGR", x=cat_metrics["Category"], y=cat_metrics["AvgCAGR"] * 100,
+                         marker_color="#2563eb"))
+    fig.add_trace(go.Bar(name="Avg Sharpe", x=cat_metrics["Category"], y=cat_metrics["AvgSharpe"],
+                         marker_color="#16a34a"))
+    fig.update_layout(barmode="group", title="CATEGORY COMPARISON — CAGR (%) & SHARPE",
+                      yaxis_title="Value", height=420)
+    return apply_mono_layout(fig)
+
+
+def plot_category_box(metrics_df):
+    fig = px.box(metrics_df, x="Category", y="CAGR", color="Category",
+                 title="RETURN DISTRIBUTION BY CATEGORY",
+                 color_discrete_sequence=VIBRANT_COLORS)
+    fig.update_layout(yaxis_tickformat=".1%", showlegend=False, height=420)
+    return apply_mono_layout(fig)
+
+
+def plot_category_scatter(metrics_df):
+    # Plotly 'size' cannot be negative. Shift MFScore to be strictly positive.
+    plot_df = metrics_df.copy()
+    min_score = plot_df["MFScore"].min()
+    plot_df["MarkerSize"] = plot_df["MFScore"] - min_score + 0.1 if min_score <= 0 else plot_df["MFScore"]
+
+    fig = px.scatter(plot_df, x="Volatility", y="CAGR", color="Category",
+                     size="MarkerSize", hover_name="Scheme",
+                     title="RISK–RETURN SCATTER (BY CATEGORY)",
+                     color_discrete_sequence=VIBRANT_COLORS)
+    fig.update_layout(xaxis_tickformat=".1%", yaxis_tickformat=".1%", height=480)
+    return apply_mono_layout(fig)
+
+
+def plot_category_heatmap(metrics_df, df_raw):
+    """Correlation heatmap of category-level average daily returns."""
+    merged = df_raw.merge(metrics_df[["Scheme", "Category"]], left_on="Scheme Name", right_on="Scheme", how="inner")
+    cat_returns = merged.pivot_table(index="Date", columns="Category", values="Return", aggfunc="mean").dropna()
+    if cat_returns.shape[1] < 2:
+        return None
+    corr = cat_returns.corr()
+    fig = px.imshow(corr, text_auto=".2f",
+                    color_continuous_scale=[[0, "#eff6ff"], [0.5, "#3b82f6"], [1, "#1e3a8a"]],
+                    aspect="auto", title="CATEGORY CORRELATION HEATMAP")
+    fig.update_layout(height=450)
+    fig.update_traces(textfont=dict(color="#0a0a0a", size=12))
+    return apply_mono_layout(fig)
+
+
+# ==================== SMART ALLOCATION ADVISOR ====================
+BASELINE_ALLOC = {
+    "Conservative": {
+        "short": {"Debt": 0.70, "Hybrid": 0.20, "Large Cap": 0.10},
+        "medium": {"Debt": 0.50, "Hybrid": 0.30, "Large Cap": 0.20},
+        "long": {"Debt": 0.40, "Hybrid": 0.30, "Large Cap": 0.20, "Mid Cap": 0.10},
+    },
+    "Balanced": {
+        "short": {"Debt": 0.30, "Hybrid": 0.30, "Large Cap": 0.25, "Mid Cap": 0.15},
+        "medium": {"Large Cap": 0.30, "Mid Cap": 0.20, "Hybrid": 0.25, "Debt": 0.15, "Small Cap": 0.10},
+        "long": {"Large Cap": 0.30, "Mid Cap": 0.25, "Small Cap": 0.15, "Hybrid": 0.20, "Debt": 0.10},
+    },
+    "Aggressive": {
+        "short": {"Large Cap": 0.35, "Mid Cap": 0.25, "Small Cap": 0.15, "Hybrid": 0.15, "Debt": 0.10},
+        "medium": {"Mid Cap": 0.30, "Small Cap": 0.25, "Large Cap": 0.20, "Sectoral": 0.15, "Hybrid": 0.10},
+        "long": {"Small Cap": 0.30, "Mid Cap": 0.30, "Sectoral": 0.20, "Large Cap": 0.15, "Flexi Cap": 0.05},
+    },
+}
+
+
+def _horizon_key(years: int) -> str:
+    if years < 3:
+        return "short"
+    elif years <= 5:
+        return "medium"
+    return "long"
+
+
+def optimize_category_allocation(metrics_df, df_raw, risk_profile, horizon_years):
+    """Mean-variance optimization at the category level.
+
+    Returns dict[category -> weight], portfolio metrics tuple.
+    """
+    hkey = _horizon_key(horizon_years)
+    baseline = BASELINE_ALLOC[risk_profile][hkey]
+    categories = list(baseline.keys())
+
+    # Build category-level daily return series
+    merged = df_raw.merge(metrics_df[["Scheme", "Category"]], left_on="Scheme Name", right_on="Scheme", how="inner")
+    cat_returns = merged.pivot_table(index="Date", columns="Category", values="Return", aggfunc="mean").dropna()
+
+    # Only keep categories that exist in data
+    available = [c for c in categories if c in cat_returns.columns]
+    if len(available) < 2:
+        # Not enough categories in data — return baseline as-is
+        total = sum(baseline[c] for c in available) or 1
+        weights = {c: baseline[c] / total for c in available}
+        return weights, (np.nan, np.nan, np.nan)
+
+    ret_df = cat_returns[available]
+    n = len(available)
+
+    def neg_sharpe(w):
+        port_ret = (ret_df * w).sum(axis=1)
+        ann_ret = port_ret.mean() * TRADING_DAYS
+        ann_vol = port_ret.std() * np.sqrt(TRADING_DAYS)
+        if ann_vol == 0:
+            return 0
+        return -(ann_ret - RISK_FREE_RATE) / ann_vol
+
+    # Bounds: allow ±50% variance around baseline
+    bounds = []
+    for c in available:
+        base_w = baseline.get(c, 1.0 / n)
+        lo = max(0.0, base_w - 0.15)
+        hi = min(1.0, base_w + 0.15)
+        bounds.append((lo, hi))
+
+    constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1}]
+    initial = np.array([baseline.get(c, 1.0 / n) for c in available])
+    initial = initial / initial.sum()  # normalise
+
+    result = minimize(neg_sharpe, initial, method="SLSQP", bounds=bounds, constraints=constraints)
+    opt_w = result.x if result.success else initial
+
+    # Portfolio metrics
+    port_ret = (ret_df * opt_w).sum(axis=1)
+    ann_ret = port_ret.mean() * TRADING_DAYS
+    ann_vol = port_ret.std() * np.sqrt(TRADING_DAYS)
+    sharpe = (ann_ret - RISK_FREE_RATE) / ann_vol if ann_vol else 0
+
+    weights = {c: round(float(w), 4) for c, w in zip(available, opt_w)}
+    return weights, (ann_ret, ann_vol, sharpe)
+
+
 # ==================== DISPLAY FUNCTIONS ====================
 def display_kpi_cards(metrics_df):
     """Display KPI summary cards - Cyclops Club style"""
@@ -990,14 +1185,19 @@ display_kpi_cards(metrics_df)
 
 st.markdown("---")
 
+# Assign categories to metrics
+metrics_df = assign_categories(metrics_df)
+
 # Main tabs - Step based navigation
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "01 DASHBOARD",
     "02 RECOMMENDATIONS", 
     "03 PORTFOLIO",
     "04 ANALYTICS",
     "05 GOALS",
-    "06 EXPORT"
+    "06 EXPORT",
+    "07 CATEGORIES",
+    "08 ADVISOR",
 ])
 
 # ==================== TAB 1: DASHBOARD ====================
@@ -1416,6 +1616,148 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}
     st.markdown("---")
     st.markdown("#### 📈 Data Preview")
     st.dataframe(metrics_df.head(10), use_container_width=True)
+
+
+# ==================== TAB 7: CATEGORY ANALYSIS ====================
+with tab7:
+    st.markdown('<p class="section-header">📂 Category-Wise Analysis</p>', unsafe_allow_html=True)
+
+    cat_metrics = compute_category_metrics(metrics_df)
+    all_categories = sorted(metrics_df["Category"].unique())
+
+    selected_cats = st.multiselect("Filter Categories", all_categories, default=all_categories, key="cat_filter")
+    filtered_cat_metrics = cat_metrics[cat_metrics["Category"].isin(selected_cats)]
+    filtered_funds = metrics_df[metrics_df["Category"].isin(selected_cats)]
+
+    # ---- KPIs per category ----
+    st.markdown("#### Category KPI Summary")
+    st.dataframe(
+        filtered_cat_metrics.style.format({
+            "AvgCAGR": "{:.2%}",
+            "AvgSharpe": "{:.2f}",
+            "AvgVolatility": "{:.2%}",
+            "AvgMaxDD": "{:.2%}",
+            "AvgMFScore": "{:.4f}",
+        }),
+        use_container_width=True,
+        height=min(38 * len(filtered_cat_metrics) + 38, 400),
+    )
+
+    # ---- Charts ----
+    col1, col2 = st.columns(2)
+    with col1:
+        st.plotly_chart(plot_category_bar(filtered_cat_metrics), use_container_width=True, theme=None)
+    with col2:
+        st.plotly_chart(plot_category_box(filtered_funds), use_container_width=True, theme=None)
+
+    st.plotly_chart(plot_category_scatter(filtered_funds), use_container_width=True, theme=None)
+
+    heatmap_fig = plot_category_heatmap(filtered_funds, df_raw)
+    if heatmap_fig:
+        st.plotly_chart(heatmap_fig, use_container_width=True, theme=None)
+
+    # ---- Top fund per category ----
+    st.markdown("---")
+    st.markdown("#### 🏆 Top Fund per Category")
+    top_funds = top_fund_per_category(filtered_funds)
+    st.dataframe(
+        top_funds.style.format({"CAGR": "{:.2%}", "Sharpe": "{:.2f}", "MFScore": "{:.4f}"}),
+        use_container_width=True,
+    )
+
+
+# ==================== TAB 8: SMART ALLOCATION ADVISOR ====================
+with tab8:
+    st.markdown('<p class="section-header">🧠 Smart Category Allocation Advisor</p>', unsafe_allow_html=True)
+
+    col_inp1, col_inp2 = st.columns(2)
+    with col_inp1:
+        adv_risk = st.selectbox("Risk Profile", ["Conservative", "Balanced", "Aggressive"], index=1, key="adv_risk")
+    with col_inp2:
+        adv_horizon = st.slider("Investment Horizon (years)", 1, 30, 5, key="adv_horizon")
+
+    horizon_label = "Short (<3y)" if adv_horizon < 3 else ("Medium (3-5y)" if adv_horizon <= 5 else "Long (>5y)")
+    st.caption(f"Profile: **{adv_risk}** · Horizon: **{horizon_label}** ({adv_horizon}y)")
+
+    if st.button("🚀 Generate Optimal Allocation", key="run_advisor"):
+        with st.spinner("Optimising category allocation..."):
+            opt_weights, (opt_ret, opt_vol, opt_sharpe) = optimize_category_allocation(
+                metrics_df, df_raw, adv_risk, adv_horizon
+            )
+
+        # ---- Metrics row ----
+        st.markdown("---")
+        st.markdown("#### Recommended Portfolio Metrics")
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric("Expected Return", f"{opt_ret*100:.1f}%" if not np.isnan(opt_ret) else "N/A")
+        mc2.metric("Volatility", f"{opt_vol*100:.1f}%" if not np.isnan(opt_vol) else "N/A")
+        mc3.metric("Sharpe Ratio", f"{opt_sharpe:.2f}" if not np.isnan(opt_sharpe) else "N/A")
+
+        # ---- Pie chart ----
+        col_v1, col_v2 = st.columns(2)
+        with col_v1:
+            cats = list(opt_weights.keys())
+            wts = [opt_weights[c] * 100 for c in cats]
+            fig_pie = px.pie(values=wts, names=cats, title="RECOMMENDED CATEGORY ALLOCATION",
+                             hole=0.4, color_discrete_sequence=VIBRANT_COLORS)
+            fig_pie.update_traces(textposition="inside", textinfo="percent+label",
+                                  textfont=dict(color="white", size=12))
+            st.plotly_chart(apply_mono_layout(fig_pie), use_container_width=True, theme=None)
+
+        with col_v2:
+            # Allocation table
+            alloc_df = pd.DataFrame({"Category": cats, "Weight (%)": wts})
+            alloc_df = alloc_df.sort_values("Weight (%)", ascending=False)
+            st.markdown("#### Allocation Breakdown")
+            st.dataframe(alloc_df.style.format({"Weight (%)": "{:.1f}"}), use_container_width=True)
+
+        # ---- Risk-return position ----
+        st.markdown("---")
+        st.markdown("#### Risk–Return Position")
+        merged_adv = df_raw.merge(metrics_df[["Scheme", "Category"]], left_on="Scheme Name", right_on="Scheme", how="inner")
+        cat_ret_pivot = merged_adv.pivot_table(index="Date", columns="Category", values="Return", aggfunc="mean").dropna()
+        avail_cats = [c for c in cats if c in cat_ret_pivot.columns]
+        if len(avail_cats) >= 2:
+            cat_ann_ret = cat_ret_pivot[avail_cats].mean() * TRADING_DAYS
+            cat_ann_vol = cat_ret_pivot[avail_cats].std() * np.sqrt(TRADING_DAYS)
+            fig_rr = go.Figure()
+            fig_rr.add_trace(go.Scatter(
+                x=cat_ann_vol * 100, y=cat_ann_ret * 100, mode="markers+text",
+                text=avail_cats, textposition="top center",
+                marker=dict(size=12, color=VIBRANT_COLORS[:len(avail_cats)]),
+                name="Categories"
+            ))
+            if not np.isnan(opt_vol):
+                fig_rr.add_trace(go.Scatter(
+                    x=[opt_vol * 100], y=[opt_ret * 100], mode="markers",
+                    marker=dict(size=18, color="#dc2626", symbol="diamond"),
+                    name="Optimal Portfolio"
+                ))
+            fig_rr.update_layout(title="CATEGORY RISK–RETURN MAP",
+                                 xaxis_title="Volatility (%)", yaxis_title="Return (%)", height=480)
+            st.plotly_chart(apply_mono_layout(fig_rr), use_container_width=True, theme=None)
+
+        # ---- Explanation panel ----
+        st.markdown("---")
+        st.markdown("#### 📝 Why This Allocation?")
+        hkey = _horizon_key(adv_horizon)
+        baseline = BASELINE_ALLOC[adv_risk][hkey]
+        top_cat = max(opt_weights, key=opt_weights.get)
+        st.markdown(f"""
+        **Profile reasoning ({adv_risk} / {horizon_label})**
+
+        - The baseline for a **{adv_risk}** investor with a **{horizon_label}** horizon
+          starts with: {', '.join(f'{c} {v*100:.0f}%' for c, v in baseline.items())}.
+        - The optimizer then fine-tuned weights (±15% bounds) to **maximise the Sharpe ratio**
+          using actual historical category returns.
+        - **{top_cat}** received the highest allocation at **{opt_weights[top_cat]*100:.1f}%**
+          due to its favourable risk-adjusted return profile over your data period.
+
+        **Trade-offs:**
+        - Higher equity tilt → higher expected return but deeper drawdowns.
+        - Debt/Hybrid buffer → smoother ride but caps upside.
+        - This allocation balances these forces for your stated risk appetite.
+        """)
 
 
 # Footer
