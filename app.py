@@ -1130,7 +1130,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 # Demo mode toggle
-demo_mode = st.sidebar.checkbox("🎮 Demo Mode", value=True, help="Load sample data automatically")
+demo_mode = st.sidebar.checkbox("Demo Mode", value=True, help="Load sample data automatically")
 
 if demo_mode:
     # Load sample data
@@ -1140,14 +1140,14 @@ if demo_mode:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         csv_path = os.path.join(script_dir, "mutual_funds_nav_dummy.csv")
         df_raw = pd.read_csv(csv_path)
-        st.sidebar.success("✅ Demo data loaded!")
+        st.sidebar.success("Demo data loaded!")
     except:
         st.sidebar.error("Could not load demo data")
         st.stop()
 else:
-    uploaded_file = st.sidebar.file_uploader("📁 Upload NAV CSV", type=["csv"])
+    uploaded_file = st.sidebar.file_uploader("Upload NAV CSV", type=["csv"])
     if uploaded_file is None:
-        st.info("👋 Upload a CSV with columns: **Scheme Name**, **Date**, **NAV** or enable Demo Mode!")
+        st.info("Upload a CSV with columns: **Scheme Name**, **Date**, **NAV** or enable Demo Mode!")
         st.stop()
     df_raw = pd.read_csv(uploaded_file)
 
@@ -1155,7 +1155,7 @@ else:
 df_raw.columns = [c.strip() for c in df_raw.columns]
 
 if not {"Scheme Name", "Date", "NAV"}.issubset(df_raw.columns):
-    st.error("❌ CSV must contain: Scheme Name, Date, NAV")
+    st.error("CSV must contain: Scheme Name, Date, NAV")
     st.stop()
 
 df_raw["Date"] = pd.to_datetime(df_raw["Date"], errors="coerce")
@@ -1165,7 +1165,7 @@ df_raw["Return"] = df_raw.groupby("Scheme Name")["NAV"].pct_change()
 df = df_raw.dropna(subset=["Return"])
 
 if df.empty:
-    st.error("❌ Not enough NAV history to compute metrics.")
+    st.error("Not enough NAV history to compute metrics.")
     st.stop()
 
 # Compute metrics
@@ -1174,11 +1174,11 @@ metrics_df = compute_metrics(df)
 # Sidebar controls
 st.sidebar.markdown("---")
 risk_profile = st.sidebar.selectbox(
-    "🎯 Risk Profile",
+    "Risk Profile",
     ["Conservative", "Balanced", "Aggressive"],
     index=1
 )
-top_k = st.sidebar.slider("📊 Funds to Recommend", 1, 10, 5)
+top_k = st.sidebar.slider("Funds to Recommend", 1, 10, 5)
 
 # Display KPI cards
 display_kpi_cards(metrics_df)
@@ -1259,7 +1259,7 @@ with tab1:
 
 # ==================== TAB 2: RECOMMENDATIONS ====================
 with tab2:
-    st.markdown(f'<p class="section-header">🎯 Top {top_k} Funds for {risk_profile} Investors</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="section-header">Top {top_k} Funds for {risk_profile} Investors</p>', unsafe_allow_html=True)
     
     subset = metrics_df[metrics_df["RiskClass"] == risk_profile].copy()
     subset = subset.sort_values("MFScore", ascending=False).head(top_k)
@@ -1299,7 +1299,7 @@ with tab2:
 
 # ==================== TAB 3: PORTFOLIO BUILDER ====================
 with tab3:
-    st.markdown('<p class="section-header">💼 Build Your Portfolio</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Build Your Portfolio</p>', unsafe_allow_html=True)
     
     # Fund selection
     selected_funds = st.multiselect(
@@ -1354,9 +1354,9 @@ with tab3:
         
         # Optimization
         st.markdown("---")
-        st.markdown("#### 🧠 Portfolio Optimization")
+        st.markdown("#### Portfolio Optimization")
         
-        if st.button("🚀 Optimize for Maximum Sharpe"):
+        if st.button("Optimize for Maximum Sharpe"):
             optimal_weights = optimize_portfolio(returns_pivot[selected_funds])
             
             st.markdown("**Optimal Allocation:**")
@@ -1376,12 +1376,12 @@ with tab3:
         
         # Correlation analysis
         st.markdown("---")
-        st.markdown("#### 🔗 Correlation Analysis")
+        st.markdown("#### Correlation Analysis")
         fig = create_correlation_heatmap(returns_pivot[selected_funds])
         st.plotly_chart(fig, use_container_width=True, theme=None)
         
         # Efficient frontier
-        st.markdown("#### 📈 Efficient Frontier")
+        st.markdown("#### Efficient Frontier")
         if st.button("Generate Efficient Frontier"):
             with st.spinner("Calculating efficient frontier..."):
                 frontier_rets, frontier_vols = generate_efficient_frontier(returns_pivot[selected_funds])
@@ -1396,7 +1396,7 @@ with tab3:
 
 # ==================== TAB 4: ANALYTICS ====================
 with tab4:
-    st.markdown('<p class="section-header">📈 Advanced Analytics</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Advanced Analytics</p>', unsafe_allow_html=True)
     
     # Fund selector
     selected_fund = st.selectbox("Select Fund for Analysis", metrics_df["Scheme"].tolist())
@@ -1421,7 +1421,7 @@ with tab4:
     
     # Head-to-head comparison
     st.markdown("---")
-    st.markdown("#### 🔄 Head-to-Head Comparison")
+    st.markdown("#### Head-to-Head Comparison")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -1470,12 +1470,12 @@ with tab4:
 
 # ==================== TAB 5: GOAL PLANNER ====================
 with tab5:
-    st.markdown('<p class="section-header">🎯 Goal-Based Investment Planner</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Goal-Based Investment Planner</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### 💰 SIP Calculator")
+        st.markdown("#### SIP Calculator")
         
         monthly_sip = st.number_input("Monthly SIP Amount (₹)", min_value=500, max_value=1000000, value=10000, step=500)
         investment_years = st.slider("Investment Period (Years)", 1, 30, 10)
@@ -1513,7 +1513,7 @@ with tab5:
         st.plotly_chart(fig, use_container_width=True, theme=None)
     
     with col2:
-        st.markdown("#### 🎯 Goal Tracker")
+        st.markdown("#### Goal Tracker")
         
         goal_name = st.text_input("Goal Name", value="Dream Home Down Payment")
         target_amount = st.number_input("Target Amount (₹)", min_value=10000, max_value=100000000, value=5000000, step=100000)
@@ -1534,7 +1534,7 @@ with tab5:
         
         # Goal probability estimation
         st.markdown("---")
-        st.markdown("#### 📊 Goal Achievement Analysis")
+        st.markdown("#### Goal Achievement Analysis")
         
         # Historical returns from selected fund
         if len(metrics_df) > 0:
@@ -1544,32 +1544,32 @@ with tab5:
             st.metric("Achievement Probability", f"{prob*100:.0f}%")
             
             if prob >= 0.8:
-                st.success("🎉 High probability of achieving your goal!")
+                st.success("High probability of achieving your goal!")
             elif prob >= 0.5:
-                st.warning("⚠️ Moderate probability. Consider increasing SIP or extending duration.")
+                st.warning(" Moderate probability. Consider increasing SIP or extending duration.")
             else:
-                st.error("🚨 Low probability. Review your investment strategy.")
+                st.error("Low probability. Review your investment strategy.")
             
             # Gap analysis
             if monthly_sip < required_sip:
                 gap = required_sip - monthly_sip
-                st.info(f"💡 Increase SIP by ₹{gap:,.0f}/month to improve your chances.")
+                st.info(f"Increase SIP by ₹{gap:,.0f}/month to improve your chances.")
 
 
 # ==================== TAB 6: EXPORT ====================
 with tab6:
-    st.markdown('<p class="section-header">📥 Export Data & Reports</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Export Data & Reports</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### 📊 Export Metrics Data")
+        st.markdown("#### Export Metrics Data")
         
         # CSV export
         csv_buffer = io.StringIO()
         metrics_df.to_csv(csv_buffer, index=False)
         st.download_button(
-            label="📥 Download Metrics (CSV)",
+            label="Download Metrics (CSV)",
             data=csv_buffer.getvalue(),
             file_name="mf_metrics.csv",
             mime="text/csv"
@@ -1579,14 +1579,14 @@ with tab6:
         csv_full = io.StringIO()
         df_raw.to_csv(csv_full, index=False)
         st.download_button(
-            label="📥 Download Full NAV Data (CSV)",
+            label="Download Full NAV Data (CSV)",
             data=csv_full.getvalue(),
             file_name="mf_full_data.csv",
             mime="text/csv"
         )
     
     with col2:
-        st.markdown("#### 📋 Export Summary Report")
+        st.markdown("#### Export Summary Report")
         
         # Generate summary report
         report = f"""
@@ -1607,20 +1607,20 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}
         """
         
         st.download_button(
-            label="📥 Download Summary Report",
+            label="Download Summary Report",
             data=report,
             file_name="mf_report.md",
             mime="text/markdown"
         )
     
     st.markdown("---")
-    st.markdown("#### 📈 Data Preview")
+    st.markdown("#### Data Preview")
     st.dataframe(metrics_df.head(10), use_container_width=True)
 
 
 # ==================== TAB 7: CATEGORY ANALYSIS ====================
 with tab7:
-    st.markdown('<p class="section-header">📂 Category-Wise Analysis</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Category-Wise Analysis</p>', unsafe_allow_html=True)
 
     cat_metrics = compute_category_metrics(metrics_df)
     all_categories = sorted(metrics_df["Category"].unique())
@@ -1658,7 +1658,7 @@ with tab7:
 
     # ---- Top fund per category ----
     st.markdown("---")
-    st.markdown("#### 🏆 Top Fund per Category")
+    st.markdown("#### Top Fund per Category")
     top_funds = top_fund_per_category(filtered_funds)
     st.dataframe(
         top_funds.style.format({"CAGR": "{:.2%}", "Sharpe": "{:.2f}", "MFScore": "{:.4f}"}),
@@ -1668,7 +1668,7 @@ with tab7:
 
 # ==================== TAB 8: SMART ALLOCATION ADVISOR ====================
 with tab8:
-    st.markdown('<p class="section-header">🧠 Smart Category Allocation Advisor</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Smart Category Allocation Advisor</p>', unsafe_allow_html=True)
 
     col_inp1, col_inp2 = st.columns(2)
     with col_inp1:
@@ -1679,7 +1679,7 @@ with tab8:
     horizon_label = "Short (<3y)" if adv_horizon < 3 else ("Medium (3-5y)" if adv_horizon <= 5 else "Long (>5y)")
     st.caption(f"Profile: **{adv_risk}** · Horizon: **{horizon_label}** ({adv_horizon}y)")
 
-    if st.button("🚀 Generate Optimal Allocation", key="run_advisor"):
+    if st.button("Generate Optimal Allocation", key="run_advisor"):
         with st.spinner("Optimising category allocation..."):
             opt_weights, (opt_ret, opt_vol, opt_sharpe) = optimize_category_allocation(
                 metrics_df, df_raw, adv_risk, adv_horizon
@@ -1739,7 +1739,7 @@ with tab8:
 
         # ---- Explanation panel ----
         st.markdown("---")
-        st.markdown("#### 📝 Why This Allocation?")
+        st.markdown("#### Why This Allocation?")
         hkey = _horizon_key(adv_horizon)
         baseline = BASELINE_ALLOC[adv_risk][hkey]
         top_cat = max(opt_weights, key=opt_weights.get)
@@ -1764,7 +1764,7 @@ with tab8:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 2rem 0; color: #666;">
-    <p>Built with ❤️ by Shashwat | Mutual Fund Portfolio Pro</p>
+    <p>Built by Shashwat | Mutual Fund Portfolio Pro</p>
     <p style="font-size: 0.8rem;">Disclaimer: This tool is for educational purposes only. Past performance is not indicative of future results.</p>
 </div>
 """, unsafe_allow_html=True)
