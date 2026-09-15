@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
 from scipy.optimize import minimize
+import os
 import io
 from datetime import datetime, timedelta
 
@@ -20,7 +21,7 @@ RISK_FREE_RATE = 0.04
 def apply_custom_css():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
     
     /* ========== ROOT VARIABLES ========== */
     :root {
@@ -45,23 +46,24 @@ def apply_custom_css():
         background: linear-gradient(180deg, #f8f8f8 0%, #ffffff 100%);
     }
     
-    /* ========== STEP NAVIGATOR ========== */
+    /* ========== WORKSPACE / STEP NAVIGATOR ========== */
     .step-indicator {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
-        padding: 2rem 0;
+        gap: 1.25rem;
+        padding: 1rem 0 0.85rem 0;
         border-bottom: 1px solid var(--border);
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     
     .step-number {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 5rem;
+        font-size: 2.25rem;
         font-weight: 700;
         color: var(--bg-dark);
         line-height: 1;
-        letter-spacing: -0.05em;
+        letter-spacing: -0.04em;
+        padding-right: 0.25rem;
     }
     
     .step-content {
@@ -69,22 +71,21 @@ def apply_custom_css():
     }
     
     .step-label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.72rem;
         font-weight: 500;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
         color: var(--text-light);
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.15rem;
     }
     
     .step-title {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         font-weight: 600;
         color: var(--text-primary);
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
+        letter-spacing: -0.01em;
     }
     
     /* ========== KPI CARDS - CYCLOPS STYLE ========== */
@@ -104,10 +105,10 @@ def apply_custom_css():
     }
     
     .kpi-label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.65rem;
-        font-weight: 500;
-        letter-spacing: 0.15em;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
         color: var(--text-light);
         margin-bottom: 0.5rem;
@@ -115,7 +116,7 @@ def apply_custom_css():
     
     .kpi-value {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 2.5rem;
+        font-size: 2.25rem;
         font-weight: 700;
         color: var(--text-primary);
         line-height: 1.1;
@@ -123,9 +124,10 @@ def apply_custom_css():
     }
     
     .kpi-sublabel {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.6rem;
-        letter-spacing: 0.1em;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
         color: var(--text-light);
         margin-top: 0.5rem;
         text-transform: uppercase;
@@ -273,14 +275,254 @@ def apply_custom_css():
         padding: 1rem;
     }
     
-    /* ========== SIDEBAR - MINIMAL ========== */
+    /* ========== SIDEBAR - INSTITUTIONAL COMMAND CENTER ========== */
     section[data-testid="stSidebar"] {
-        background: var(--bg-card) !important;
-        border-right: 1px solid var(--border);
+        background: #ffffff !important;
+        border-right: 1px solid var(--border) !important;
+        font-family: 'Space Grotesk', sans-serif !important;
     }
     
+    /* Ensure typography is Space Grotesk across text elements, without overriding icon fonts */
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] div.stMarkdown,
+    section[data-testid="stSidebar"] .stSelectbox,
+    section[data-testid="stSidebar"] .stSlider,
+    section[data-testid="stSidebar"] .stCheckbox {
+        font-family: 'Space Grotesk', sans-serif !important;
+    }
+
+    section[data-testid="stSidebar"] span:not([data-testid="stIconMaterial"]) {
+        font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Preserve and enforce Material Symbols icon rendering for collapse buttons */
+    [data-testid="stIconMaterial"],
+    [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+    [data-testid="stSidebarCollapseButton"] span,
+    [data-testid="stSidebarCollapseButton"] i,
+    [data-testid="collapsedControl"] [data-testid="stIconMaterial"],
+    [data-testid="collapsedControl"] span,
+    [data-testid="collapsedControl"] i,
+    span[data-testid="stIconMaterial"],
+    .material-symbols-rounded {
+        font-family: 'Material Symbols Rounded' !important;
+        font-weight: normal !important;
+        font-style: normal !important;
+        font-size: 1.35rem !important;
+        line-height: 1 !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        display: inline-block !important;
+        white-space: nowrap !important;
+        word-wrap: normal !important;
+        direction: ltr !important;
+        -webkit-font-feature-settings: 'liga' 1 !important;
+        font-feature-settings: 'liga' 1 !important;
+    }
+    
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.25rem !important;
+    }
+
+    div[data-testid="stSidebarHeader"] {
+        padding: 0.5rem 0.75rem 0.25rem 0.75rem !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        background: transparent !important;
+    }
+
+    div[data-testid="stSidebarUserContent"] {
+        padding: 0 1.1rem 1.5rem 1.1rem !important;
+    }
+
     section[data-testid="stSidebar"] .stMarkdown {
         color: var(--text-primary);
+    }
+
+    /* Sidebar Brand Section */
+    .sidebar-brand {
+        padding: 0 0 0.85rem 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.85rem;
+    }
+
+    .sidebar-brand-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+
+    .sidebar-brand-subtitle {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.72rem;
+        font-weight: 400;
+        letter-spacing: 0.01em;
+        color: var(--text-muted);
+        margin-top: 0.2rem;
+    }
+
+    .sidebar-brand-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-top: 0.5rem;
+        padding: 0.2rem 0.5rem;
+        background: var(--bg-muted);
+        border: 1px solid var(--border);
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.65rem;
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+
+    .live-dot {
+        width: 6px;
+        height: 6px;
+        background: #00c853;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    /* Section Headers in Sidebar */
+    .sidebar-section-header {
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-size: 0.68rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.08em !important;
+        color: var(--text-light) !important;
+        text-transform: uppercase !important;
+        margin: 0.75rem 0 0.35rem 0 !important;
+    }
+
+    /* ========== SEAMLESS INSTITUTIONAL NAVIGATION LIST ========== */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > label {
+        display: none !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        padding: 0.5rem 0.75rem !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 6px !important;
+        cursor: pointer !important;
+        transition: background-color 0.15s ease, color 0.15s ease !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        outline: none !important;
+    }
+
+    /* Hide the default circular radio indicator */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
+
+    /* Text styling inside option */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label div[data-testid="stMarkdownContainer"] p {
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-size: 0.82rem !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.01em !important;
+        text-transform: none !important;
+        color: #52525b !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.35 !important;
+    }
+
+    /* Hover State */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+        background: #f4f4f5 !important;
+        border: none !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover div[data-testid="stMarkdownContainer"] p {
+        color: #09090b !important;
+    }
+
+    /* Active State (Checked) */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+        background: #09090b !important;
+        border: none !important;
+        border-radius: 6px !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) div[data-testid="stMarkdownContainer"] p {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+
+    /* Sidebar Collapse Button inside Sidebar */
+    [data-testid="stSidebarCollapseButton"] {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    [data-testid="stSidebarCollapseButton"] button {
+        background: transparent !important;
+        border: none !important;
+        color: #71717a !important;
+        border-radius: 4px !important;
+        padding: 0.3rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+        box-shadow: none !important;
+    }
+    
+    [data-testid="stSidebarCollapseButton"] button:hover {
+        color: #09090b !important;
+        background: #f4f4f5 !important;
+    }
+
+    /* Sidebar Telemetry Card */
+    .sidebar-telemetry {
+        background: var(--bg-muted);
+        border: 1px solid var(--border);
+        padding: 0.75rem 0.85rem;
+        margin-top: 1.25rem;
+        margin-bottom: 0.75rem;
+        font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .telemetry-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        margin-bottom: 0.3rem;
+    }
+
+    .telemetry-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .telemetry-val {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
     }
     
     /* ========== BUTTONS ========== */
@@ -289,17 +531,17 @@ def apply_custom_css():
         color: white !important;
         border: none !important;
         border-radius: 0 !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        font-size: 0.7rem !important;
-        font-weight: 500 !important;
-        letter-spacing: 0.1em !important;
-        text-transform: uppercase !important;
-        padding: 0.8rem 1.5rem !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.02em !important;
+        text-transform: none !important;
+        padding: 0.65rem 1.25rem !important;
         transition: all 0.2s ease !important;
     }
     
     .stButton > button:hover {
-        background: #333 !important;
+        background: #27272a !important;
         transform: translateY(-1px);
     }
     
@@ -413,10 +655,61 @@ def apply_custom_css():
         color: #0a0a0a !important;
     }
     
-    /* ========== HIDE STREAMLIT BRANDING ========== */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* ========== STREAMLIT CHROME & SIDEBAR COLLAPSE TOGGLE ========== */
+    #MainMenu { display: none !important; }
+    footer { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+    
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        visibility: visible !important;
+        height: 2.75rem !important;
+        z-index: 999 !important;
+    }
+    
+    /* Prominent, accessible toggle button when sidebar is collapsed */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 0.75rem !important;
+        left: 0.75rem !important;
+        z-index: 999999 !important;
+        background: #09090b !important;
+        color: #ffffff !important;
+        border: 1px solid #27272a !important;
+        border-radius: 6px !important;
+        padding: 0.35rem 0.55rem !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15) !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+    }
+    
+    [data-testid="collapsedControl"]:hover {
+        background: #27272a !important;
+        transform: translateY(-1px);
+    }
+
+    [data-testid="collapsedControl"] button {
+        background: transparent !important;
+        color: #ffffff !important;
+        border: none !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    [data-testid="collapsedControl"] [data-testid="stIconMaterial"],
+    [data-testid="collapsedControl"] span {
+        color: #ffffff !important;
+        font-family: 'Material Symbols Rounded' !important;
+    }
+    
+    [data-testid="collapsedControl"] svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+    }
     
     </style>
     """, unsafe_allow_html=True)
@@ -1102,10 +1395,52 @@ st.set_page_config(
 
 apply_custom_css()
 
-# Cyclops-style Header
-st.markdown("""
+# ==================== NAVIGATION CONFIGURATION ====================
+NAV_DASHBOARD = "01  Dashboard"
+NAV_RECOMMENDATIONS = "02  Recommendations"
+NAV_PORTFOLIO = "03  Portfolio Optimization"
+NAV_ANALYTICS = "04  Analytics"
+NAV_GOALS = "05  Goal Planner"
+NAV_EXPORT = "06  Export & Reports"
+NAV_CATEGORIES = "07  Category Analysis"
+NAV_ADVISOR = "08  Smart Advisor"
+
+NAV_MODULES = [
+    NAV_DASHBOARD,
+    NAV_RECOMMENDATIONS,
+    NAV_PORTFOLIO,
+    NAV_ANALYTICS,
+    NAV_GOALS,
+    NAV_EXPORT,
+    NAV_CATEGORIES,
+    NAV_ADVISOR,
+]
+
+# Sidebar - Institutional Command Center
+st.sidebar.markdown("""
+<div class="sidebar-brand">
+    <div class="sidebar-brand-title">MF Portfolio Pro</div>
+    <div class="sidebar-brand-subtitle">Portfolio Analysis & Optimization</div>
+    <div class="sidebar-brand-badge">
+        <span class="live-dot"></span>
+        <span>Online · 252 Trading Days</span>
+    </div>
+</div>
+<p class="sidebar-section-header">Navigation</p>
+""", unsafe_allow_html=True)
+
+selected_module = st.sidebar.radio(
+    "Navigation",
+    NAV_MODULES,
+    index=0,
+    label_visibility="collapsed",
+    key="active_nav_module"
+)
+
+# Header - Clean & Quiet
+st.markdown(f"""
 <div class="cyclops-header">
-    <div class="cyclops-logo">MF PORTFOLIO PRO</div>
+    <div class="cyclops-logo">MF PORTFOLIO PRO <span style="font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 400; color: #71717a; margin-left: 0.75rem;">· &nbsp; {selected_module}</span></div>
     <div class="cyclops-status">
         <span class="tech-label">SERVICE: <span class="tech-value">PORTFOLIO ANALYSIS</span></span>
         <span class="tech-label">MODE: <span class="tech-value">ACTIVE</span></span>
@@ -1117,32 +1452,31 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar - Minimal
 st.sidebar.markdown("""
-<div style="padding: 1rem 0; border-bottom: 1px solid #e5e5e5; margin-bottom: 1rem;">
-    <div style="font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; color: #0a0a0a;">
-        CONTROL PANEL
-    </div>
-    <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: #999; margin-top: 0.25rem;">
-        SYSTEM CONFIGURATION
-    </div>
-</div>
+<div style="margin: 1.1rem 0 0.75rem 0; border-top: 1px solid #e5e5e5;"></div>
+<p class="sidebar-section-header">Data & Settings</p>
 """, unsafe_allow_html=True)
 
-# Demo mode toggle
-demo_mode = st.sidebar.checkbox("Demo Mode", value=True, help="Load sample data automatically")
+# Sidebar controls: Risk Profile & Funds to Recommend
+risk_profile = st.sidebar.selectbox(
+    "Risk Profile",
+    ["Conservative", "Balanced", "Aggressive"],
+    index=1
+)
+top_k = st.sidebar.slider("Funds to Recommend", 1, 10, 5)
+
+# Demo mode toggle placed towards the last after Risk Profile, with NO '?' tooltip
+demo_mode = st.sidebar.checkbox("Demo Mode", value=True)
 
 if demo_mode:
     # Load sample data
-    import os
     try:
         # Use relative path for cloud deployment
         script_dir = os.path.dirname(os.path.abspath(__file__))
         csv_path = os.path.join(script_dir, "mutual_funds_nav_dummy.csv")
         df_raw = pd.read_csv(csv_path)
-        st.sidebar.success("Demo data loaded!")
-    except:
-        st.sidebar.error("Could not load demo data")
+    except Exception as e:
+        st.sidebar.error(f"Could not load demo data: {e}")
         st.stop()
 else:
     uploaded_file = st.sidebar.file_uploader("Upload NAV CSV", type=["csv"])
@@ -1171,37 +1505,34 @@ if df.empty:
 # Compute metrics
 metrics_df = compute_metrics(df)
 
-# Sidebar controls
-st.sidebar.markdown("---")
-risk_profile = st.sidebar.selectbox(
-    "Risk Profile",
-    ["Conservative", "Balanced", "Aggressive"],
-    index=1
-)
-top_k = st.sidebar.slider("Funds to Recommend", 1, 10, 5)
-
-# Display KPI cards
-display_kpi_cards(metrics_df)
-
-st.markdown("---")
+# Sidebar Telemetry
+st.sidebar.markdown("""
+<div class="sidebar-telemetry">
+    <div class="telemetry-row"><span>Optimizer</span><span class="telemetry-val">SLSQP</span></div>
+    <div class="telemetry-row"><span>Benchmark</span><span class="telemetry-val">Balanced MF</span></div>
+    <div class="telemetry-row"><span>Risk-Free Rate</span><span class="telemetry-val">4.0%</span></div>
+    <div class="telemetry-row"><span>Confidence</span><span class="telemetry-val">95% VaR</span></div>
+</div>
+""", unsafe_allow_html=True)
 
 # Assign categories to metrics
 metrics_df = assign_categories(metrics_df)
 
-# Main tabs - Step based navigation
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "01 DASHBOARD",
-    "02 RECOMMENDATIONS", 
-    "03 PORTFOLIO",
-    "04 ANALYTICS",
-    "05 GOALS",
-    "06 EXPORT",
-    "07 CATEGORIES",
-    "08 ADVISOR",
-])
-
-# ==================== TAB 1: DASHBOARD ====================
-with tab1:
+# ==================== MODULE 1: DASHBOARD ====================
+if selected_module == NAV_DASHBOARD:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">01</div>
+        <div class="step-content">
+            <div class="step-label">Overview</div>
+            <div class="step-title">Dashboard & Fund Metrics</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Display KPI cards
+    display_kpi_cards(metrics_df)
+    
     st.markdown('<p class="section-header">Fund Metrics Overview</p>', unsafe_allow_html=True)
     
     # Filter options
@@ -1257,8 +1588,17 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
-# ==================== TAB 2: RECOMMENDATIONS ====================
-with tab2:
+# ==================== MODULE 2: RECOMMENDATIONS ====================
+elif selected_module == NAV_RECOMMENDATIONS:
+    st.markdown(f"""
+    <div class="step-indicator">
+        <div class="step-number">02</div>
+        <div class="step-content">
+            <div class="step-label">Recommendations</div>
+            <div class="step-title">Fund Recommendations & Risk Matching</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown(f'<p class="section-header">Top {top_k} Funds for {risk_profile} Investors</p>', unsafe_allow_html=True)
     
     subset = metrics_df[metrics_df["RiskClass"] == risk_profile].copy()
@@ -1297,8 +1637,17 @@ with tab2:
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
-# ==================== TAB 3: PORTFOLIO BUILDER ====================
-with tab3:
+# ==================== MODULE 3: PORTFOLIO BUILDER ====================
+elif selected_module == NAV_PORTFOLIO:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">03</div>
+        <div class="step-content">
+            <div class="step-label">Portfolio Optimization</div>
+            <div class="step-title">Modern Portfolio Theory & Efficient Frontier</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Build Your Portfolio</p>', unsafe_allow_html=True)
     
     # Fund selection
@@ -1394,8 +1743,17 @@ with tab3:
         st.info("Select at least 2 funds to build a portfolio.")
 
 
-# ==================== TAB 4: ANALYTICS ====================
-with tab4:
+# ==================== MODULE 4: ANALYTICS ====================
+elif selected_module == NAV_ANALYTICS:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">04</div>
+        <div class="step-content">
+            <div class="step-label">Analytics</div>
+            <div class="step-title">Risk Dynamics & Rolling Analysis</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Advanced Analytics</p>', unsafe_allow_html=True)
     
     # Fund selector
@@ -1468,8 +1826,17 @@ with tab4:
         st.plotly_chart(fig, use_container_width=True, theme=None)
 
 
-# ==================== TAB 5: GOAL PLANNER ====================
-with tab5:
+# ==================== MODULE 5: GOAL PLANNER ====================
+elif selected_module == NAV_GOALS:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">05</div>
+        <div class="step-content">
+            <div class="step-label">Goal Planner</div>
+            <div class="step-title">SIP Calculator & Goal Simulator</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Goal-Based Investment Planner</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -1556,8 +1923,17 @@ with tab5:
                 st.info(f"Increase SIP by ₹{gap:,.0f}/month to improve your chances.")
 
 
-# ==================== TAB 6: EXPORT ====================
-with tab6:
+# ==================== MODULE 6: EXPORT ====================
+elif selected_module == NAV_EXPORT:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">06</div>
+        <div class="step-content">
+            <div class="step-label">Export</div>
+            <div class="step-title">Reports & Data Downloads</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Export Data & Reports</p>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -1618,8 +1994,17 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}
     st.dataframe(metrics_df.head(10), use_container_width=True)
 
 
-# ==================== TAB 7: CATEGORY ANALYSIS ====================
-with tab7:
+# ==================== MODULE 7: CATEGORY ANALYSIS ====================
+elif selected_module == NAV_CATEGORIES:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">07</div>
+        <div class="step-content">
+            <div class="step-label">Category Analysis</div>
+            <div class="step-title">Category Performance & Dispersion</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Category-Wise Analysis</p>', unsafe_allow_html=True)
 
     cat_metrics = compute_category_metrics(metrics_df)
@@ -1666,8 +2051,17 @@ with tab7:
     )
 
 
-# ==================== TAB 8: SMART ALLOCATION ADVISOR ====================
-with tab8:
+# ==================== MODULE 8: SMART ALLOCATION ADVISOR ====================
+elif selected_module == NAV_ADVISOR:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">08</div>
+        <div class="step-content">
+            <div class="step-label">Smart Advisor</div>
+            <div class="step-title">Category Allocation Advisor</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown('<p class="section-header">Smart Category Allocation Advisor</p>', unsafe_allow_html=True)
 
     col_inp1, col_inp2 = st.columns(2)

@@ -7,59 +7,58 @@
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://shashwat-mfportfolio.streamlit.app/)
 
-A comprehensive Python-based application for mutual fund portfolio analysis, optimization, and goal-based planning. Built with Streamlit and featuring advanced analytics powered by Modern Portfolio Theory.
+A comprehensive Python-based platform for mutual fund portfolio analysis, optimization, and goal-based planning. Built with Streamlit and featuring quantitative institutional analytics powered by Modern Portfolio Theory.
 
 ## 🚀 Features
 
-### Core Capabilities
-* **📊 Dashboard** - KPI cards, metrics table, risk distribution charts
-* **🎯 Recommendations** - Risk-matched fund suggestions with detailed analytics
-* **💼 Portfolio Builder** - Custom allocation with Sharpe optimization & Efficient Frontier
-* **📈 Advanced Analytics** - Drawdown analysis, rolling metrics, head-to-head comparison
-* **🎯 Goal Planner** - SIP calculator with Monte Carlo simulation
-* **📥 Export** - CSV downloads and summary reports
+### Core Modules
+* **01 Dashboard** - KPI cards, metrics table, risk distribution charts, and Sharpe vs Volatility scatter plot
+* **02 Recommendations** - Risk-matched fund suggestions with period performance comparisons and NAV history
+* **03 Portfolio Optimization** - Custom allocation weighting, SLSQP Sharpe optimization, correlation heatmap, and Efficient Frontier
+* **04 Analytics** - Historical drawdown analysis, rolling metrics (returns & volatility), and head-to-head fund comparison
+* **05 Goal Planner** - Compound SIP calculator and Monte Carlo wealth engine with goal probability estimation
+* **06 Export & Reports** - Instant CSV downloads and professional markdown portfolio reports
+* **07 Category Analysis** - Sector KPI matrix, return and risk dispersion boxplots, and cross-category correlation
+* **08 Smart Advisor** - Strategic multi-category allocation based on risk appetite and investment horizon
 
 ### Metrics Calculated
 * CAGR, Volatility, Sharpe Ratio, Sortino Ratio
 * Max Drawdown, Calmar Ratio, VaR (95%), CVaR (95%)
 * Period-wise returns (1M, 3M, 6M, 1Y, 3Y, 5Y)
-
+* Composite Multi-Factor Score
 
 ## 📁 Project Structure
 
-* `app.py`: The main entry point for the application.
-* `mutual_funds_nav_dummy.csv`: Sample historical NAV data for testing and analysis.
+* `app.py`: The main Streamlit web application.
+* `mutual_funds_nav_dummy.csv`: Sample historical NAV data for demo mode and analysis.
 * `Mid_SEM.pdf`: Project documentation and methodology details.
+* `requirements.txt`: Python package dependencies.
+* `WALKTHROUGH.md`: Architecture and development walkthrough.
+* `FEATURES.md`: Detailed breakdown of platform capabilities.
 
 ## 🛠️ Installation & Setup
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/Shashwat-deb/MF_Portfolio_Analysis.git](https://github.com/Shashwat-deb/MF_Portfolio_Analysis.git)
+   git clone https://github.com/Shashwat-deb/MF_Portfolio_Analysis.git
    cd MF_Portfolio_Analysis
-```
+   ```
 
 2. **Install Dependencies:**
-```bash
-pip install pandas numpy matplotlib
-
-```
-
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. **Run the App:**
-```bash
-python app.py
-
-```
-
-
+   ```bash
+   streamlit run app.py
+   ```
 
 ## 📊 Usage
 
-1. **Upload/Load Data:** The app uses the included `.csv` files to pull historical NAV data.
-2. **Select Mode:** Choose between creating a **New Portfolio** or **Assessing an Existing** one.
-3. **Set Risk:** Define your risk appetite to see suggested mutual fund allocations.
-4. **View Results:** Review the performance metrics and risk-return analysis.
+1. **Load Data:** Enable **Demo Mode** in the sidebar to immediately explore preloaded mutual funds NAV data, or upload your custom NAV CSV.
+2. **Configure Profile:** Adjust risk appetite (Conservative, Balanced, Aggressive) and recommendation parameters.
+3. **Navigate:** Use the Institutional Command Center in the sidebar to explore all 8 quantitative modules.
 
 ## 🤝 Contributing
 
@@ -73,6 +72,4 @@ Contributions are welcome!
 
 ---
 
-*Developed by [Shashwat-deb*](https://github.com/Shashwat-deb)
-
-```
+*Developed by [Shashwat-deb](https://github.com/Shashwat-deb)*

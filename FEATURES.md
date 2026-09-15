@@ -39,6 +39,16 @@ A comprehensive Mutual Fund Portfolio Analysis and Optimization platform built w
 - **CSV Downloads** - Export metrics and full NAV data
 - **Summary Reports** - Generate markdown reports with key findings
 
+### 🏢 Category Analysis
+- **Sector KPI Matrix** - Category-aggregated CAGR, Volatility, Sharpe, and Sortino ratios
+- **Return & Risk Dispersion** - Interactive boxplots and distribution comparisons across fund types
+- **Category Correlation Heatmap** - Inter-category cross-asset correlation matrix
+
+### 🧭 Smart Advisor
+- **Strategic Asset Allocation** - Horizon and risk-profile driven portfolio weighting recommendations
+- **Risk-Return Positioning** - Visualization of recommended allocations on the risk-return spectrum
+- **Actionable Execution Plan** - Clear step-by-step guidance on implementing strategic asset allocations
+
 ---
 
 ## 📊 Metrics Calculated

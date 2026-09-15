@@ -56,38 +56,33 @@ def calculate_goal_probability(target, monthly_sip, years, historical_returns)
 
 ---
 
-## UI Structure
+## UI Architecture (Institutional Side Navigation)
 
 ```
-📈 MF Portfolio Pro
-├── 📊 Dashboard
-│   ├── KPI Cards (CAGR, Sharpe, Funds, Top Performer)
-│   ├── Metrics Table
-│   └── Charts (Risk Distribution, Sharpe vs Vol)
+MF PORTFOLIO PRO
+├── SIDEBAR COMMAND CENTER
+│   ├── Brand & Status (MF Portfolio Pro · Online · 252 Trading Days)
+│   ├── Navigation Directory (Space Grotesk Minimal Radio Tiles)
+│   │   ├── 01  Dashboard
+│   │   ├── 02  Recommendations
+│   │   ├── 03  Portfolio Optimization
+│   │   ├── 04  Analytics
+│   │   ├── 05  Goal Planner
+│   │   ├── 06  Export & Reports
+│   │   ├── 07  Category Analysis
+│   │   └── 08  Smart Advisor
+│   ├── Data & Settings (Risk Profile, Top K, Demo Mode / CSV Upload)
+│   └── System Telemetry (Scipy SLSQP, Rf: 4.0%, 95% VaR)
 │
-├── 🎯 Recommendations
-│   ├── Fund Cards
-│   ├── NAV History
-│   └── Period Comparison
-│
-├── 💼 Portfolio Builder
-│   ├── Allocation Sliders
-│   ├── Optimization Button
-│   ├── Correlation Heatmap
-│   └── Efficient Frontier
-│
-├── 📈 Analytics
-│   ├── Drawdown Chart
-│   ├── Rolling Metrics
-│   └── H2H Comparison
-│
-├── 🎯 Goal Planner
-│   ├── SIP Calculator
-│   └── Goal Tracker
-│
-└── 📥 Export
-    ├── CSV Downloads
-    └── Summary Report
+└── MAIN WORKSPACE
+    ├── 01  Dashboard: KPI Cards, Metrics Table, Risk Class Distribution, Sharpe vs Vol
+    ├── 02  Recommendations: Risk-Matched Funds, NAV Trajectory, Period Comparison
+    ├── 03  Portfolio Optimization: Manual Weighting, Sharpe Optimization, Correlation Matrix, Efficient Frontier
+    ├── 04  Analytics: Drawdown Trajectory, Rolling Sharpe, Head-to-Head Comparison
+    ├── 05  Goal Planner: Compound SIP Calculator, Monte Carlo Wealth Engine
+    ├── 06  Export & Reports: Metrics CSV, Full NAV CSV, Markdown Summary Report
+    ├── 07  Category Analysis: Category KPI Matrix, Cross-Sector Return & Dispersion
+    └── 08  Smart Advisor: Strategic Multi-Category Allocation & Risk-Return Position
 ```
 
 ---
