@@ -71,7 +71,7 @@ MF PORTFOLIO PRO
 │   │   ├── 06  Export & Reports
 │   │   ├── 07  Category Analysis
 │   │   └── 08  Smart Advisor
-│   ├── Data & Settings (Risk Profile, Top K, Demo Mode / CSV Upload)
+│   ├── Data & Settings (Risk Profile, Top K, Data Source: Demo / Live (AMFI) / CSV Upload)
 │   └── System Telemetry (Scipy SLSQP, Rf: 4.0%, 95% VaR)
 │
 └── MAIN WORKSPACE

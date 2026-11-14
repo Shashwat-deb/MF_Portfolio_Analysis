@@ -77,7 +77,7 @@ pip install streamlit plotly scipy pandas numpy matplotlib
 streamlit run app.py
 ```
 
-Open http://localhost:8501 and enable **Demo Mode** to explore with sample data!
+Open http://localhost:8501 and choose the **Demo** data source to explore with sample data!
 
 ---
 

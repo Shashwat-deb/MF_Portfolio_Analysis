@@ -1,0 +1,79 @@
+Scheme Name,Sector,Weight
+Alpha Equity Fund,Financial Services,26
+Alpha Equity Fund,Information Technology,16
+Alpha Equity Fund,"Oil, Gas & Energy",10
+Alpha Equity Fund,Consumer Goods,10
+Alpha Equity Fund,Healthcare,8
+Alpha Equity Fund,Automobile,8
+Alpha Equity Fund,Industrials,8
+Alpha Equity Fund,Telecom,5
+Alpha Equity Fund,Materials,5
+Alpha Equity Fund,Cash,4
+Beta Bond Fund,Government Securities,45
+Beta Bond Fund,Corporate Bonds,40
+Beta Bond Fund,Money Market,10
+Beta Bond Fund,Cash,5
+Gamma Hybrid Fund,Financial Services,18
+Gamma Hybrid Fund,Information Technology,10
+Gamma Hybrid Fund,Consumer Goods,6
+Gamma Hybrid Fund,Healthcare,4
+Gamma Hybrid Fund,Industrials,4
+Gamma Hybrid Fund,Government Securities,25
+Gamma Hybrid Fund,Corporate Bonds,28
+Gamma Hybrid Fund,Cash,5
+Delta Smallcap Fund,Industrials,24
+Delta Smallcap Fund,Materials,16
+Delta Smallcap Fund,Financial Services,14
+Delta Smallcap Fund,Consumer Goods,12
+Delta Smallcap Fund,Healthcare,10
+Delta Smallcap Fund,Information Technology,8
+Delta Smallcap Fund,Automobile,8
+Delta Smallcap Fund,Real Estate,5
+Delta Smallcap Fund,Cash,3
+Epsilon Largecap Fund,Financial Services,34
+Epsilon Largecap Fund,Information Technology,18
+Epsilon Largecap Fund,"Oil, Gas & Energy",14
+Epsilon Largecap Fund,Consumer Goods,12
+Epsilon Largecap Fund,Automobile,6
+Epsilon Largecap Fund,Telecom,6
+Epsilon Largecap Fund,Healthcare,5
+Epsilon Largecap Fund,Cash,5
+Omega FlexiCap Fund,Financial Services,28
+Omega FlexiCap Fund,Information Technology,14
+Omega FlexiCap Fund,Consumer Goods,10
+Omega FlexiCap Fund,Healthcare,10
+Omega FlexiCap Fund,Industrials,10
+Omega FlexiCap Fund,Automobile,8
+Omega FlexiCap Fund,"Oil, Gas & Energy",8
+Omega FlexiCap Fund,Materials,6
+Omega FlexiCap Fund,Cash,6
+Theta Corporate Bond Fund,Corporate Bonds,78
+Theta Corporate Bond Fund,Government Securities,12
+Theta Corporate Bond Fund,Money Market,6
+Theta Corporate Bond Fund,Cash,4
+Sigma MultiAsset Fund,Financial Services,16
+Sigma MultiAsset Fund,Information Technology,8
+Sigma MultiAsset Fund,"Oil, Gas & Energy",6
+Sigma MultiAsset Fund,Materials,6
+Sigma MultiAsset Fund,Corporate Bonds,20
+Sigma MultiAsset Fund,Government Securities,18
+Sigma MultiAsset Fund,Gold,20
+Sigma MultiAsset Fund,Cash,6
+Zeta Midcap Fund,Industrials,22
+Zeta Midcap Fund,Financial Services,16
+Zeta Midcap Fund,Consumer Goods,14
+Zeta Midcap Fund,Healthcare,12
+Zeta Midcap Fund,Information Technology,10
+Zeta Midcap Fund,Automobile,10
+Zeta Midcap Fund,Materials,8
+Zeta Midcap Fund,Real Estate,4
+Zeta Midcap Fund,Cash,4
+Lambda Value Fund,Financial Services,24
+Lambda Value Fund,"Oil, Gas & Energy",16
+Lambda Value Fund,Materials,14
+Lambda Value Fund,Information Technology,10
+Lambda Value Fund,Automobile,10
+Lambda Value Fund,Industrials,10
+Lambda Value Fund,Consumer Goods,8
+Lambda Value Fund,Healthcare,4
+Lambda Value Fund,Cash,4
