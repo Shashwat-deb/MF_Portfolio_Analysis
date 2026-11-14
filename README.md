@@ -20,6 +20,7 @@ A comprehensive Python-based platform for mutual fund portfolio analysis, optimi
 * **06 Export & Reports** - Instant CSV downloads and professional markdown portfolio reports
 * **07 Category Analysis** - Sector KPI matrix, return and risk dispersion boxplots, and cross-category correlation
 * **08 Smart Advisor** - Strategic multi-category allocation based on risk appetite and investment horizon
+* **09 Sector Exposure** - Look-through sector exposure, concentration (HHI) warnings and fund overlap, from an optional holdings CSV (`Scheme Name, Sector, Weight`). Module 03 can also cap sector and per-fund exposure when optimizing.
 
 ### Metrics Calculated
 * CAGR, Volatility, Sharpe Ratio, Sortino Ratio
@@ -31,6 +32,7 @@ A comprehensive Python-based platform for mutual fund portfolio analysis, optimi
 
 * `app.py`: The main Streamlit web application.
 * `mutual_funds_nav_dummy.csv`: Sample historical NAV data for demo mode and analysis.
+* `mutual_funds_holdings_dummy.csv`: Sample sector holdings for the demo funds.
 * `Mid_SEM.pdf`: Project documentation and methodology details.
 * `requirements.txt`: Python package dependencies.
 * `WALKTHROUGH.md`: Architecture and development walkthrough.
@@ -56,9 +58,9 @@ A comprehensive Python-based platform for mutual fund portfolio analysis, optimi
 
 ## 📊 Usage
 
-1. **Load Data:** Enable **Demo Mode** in the sidebar to immediately explore preloaded mutual funds NAV data, or upload your custom NAV CSV.
+1. **Load Data:** Pick a **Data Source** in the sidebar: **Demo** (preloaded sample data), **Live (AMFI)** (search real schemes and pull current NAV history from mfapi.in; AMFI categories are used automatically), or **Upload CSV** (your own NAV file).
 2. **Configure Profile:** Adjust risk appetite (Conservative, Balanced, Aggressive) and recommendation parameters.
-3. **Navigate:** Use the Institutional Command Center in the sidebar to explore all 8 quantitative modules.
+3. **Navigate:** Use the Institutional Command Center in the sidebar to explore all 9 quantitative modules.
 
 ## 🤝 Contributing
 

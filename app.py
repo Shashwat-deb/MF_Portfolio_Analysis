@@ -8,14 +8,28 @@ from plotly.subplots import make_subplots
 from scipy.optimize import minimize
 import os
 import io
+import requests
 from datetime import datetime, timedelta
 
 # Set plotly_white as the global default template for ALL charts (light theme)
 pio.templates.default = "plotly_white"
 
 # ==================== CONSTANTS ====================
+# Observations per year used to annualise. Defaults to 252 trading days and is
+# re-estimated from the loaded data (see infer_periods_per_year), so that
+# calendar-day series (~365/yr) are not annualised as if they were trading days.
 TRADING_DAYS = 252
 RISK_FREE_RATE = 0.04
+
+
+def infer_periods_per_year(data, default=252):
+    """Estimate observations per year from the median per-scheme sampling rate."""
+    rates = []
+    for _, grp in data.groupby("Scheme Name"):
+        span_years = (grp["Date"].max() - grp["Date"].min()).days / 365.25
+        if span_years >= 0.25 and len(grp) > 1:
+            rates.append((len(grp) - 1) / span_years)
+    return int(round(np.median(rates))) if rates else default
 
 # ==================== CYCLOPS CLUB INSPIRED STYLING ====================
 def apply_custom_css():
@@ -840,7 +854,8 @@ def compute_metrics(df):
         r = classify(v)
         
         # Period returns
-        periods = {"1M": 21, "3M": 63, "6M": 126, "1Y": 252, "3Y": 756, "5Y": 1260}
+        periods = {k: int(round(m / 12 * TRADING_DAYS))
+                   for k, m in {"1M": 1, "3M": 3, "6M": 6, "1Y": 12, "3Y": 36, "5Y": 60}.items()}
         period_rets = calculate_period_returns(nav, periods)
         
         out.append({
@@ -858,13 +873,24 @@ def compute_metrics(df):
         })
     
     mdf = pd.DataFrame(out)
+    # Min-max normalise each input across the fund universe so the weights act on
+    # comparable [0, 1] scales (otherwise ratios like Sharpe dominate fractions like CAGR).
     mdf["MFScore"] = (
-        0.35 * mdf["Sharpe"].fillna(0)
-        + 0.25 * mdf["CAGR"].fillna(0)
-        + 0.20 * mdf["Sortino"].fillna(0).clip(-2, 2) / 2
-        - 0.20 * mdf["MaxDrawdown"].abs().fillna(0)
+        0.35 * minmax_normalise(mdf["Sharpe"])
+        + 0.25 * minmax_normalise(mdf["CAGR"])
+        + 0.20 * minmax_normalise(mdf["Sortino"])
+        - 0.20 * minmax_normalise(mdf["MaxDrawdown"].abs())
     )
     return mdf
+
+
+def minmax_normalise(s):
+    """Scale a Series to [0, 1]; missing values and constant columns map to 0.5."""
+    s = s.astype(float)
+    lo, hi = s.min(), s.max()
+    if pd.isna(lo) or hi == lo:
+        return pd.Series(0.5, index=s.index)
+    return ((s - lo) / (hi - lo)).fillna(0.5)
 
 
 # ==================== PORTFOLIO OPTIMIZATION ====================
@@ -897,6 +923,35 @@ def optimize_portfolio(returns_df, target_return=None):
     
     result = minimize(neg_sharpe, initial, method="SLSQP", bounds=bounds, constraints=constraints)
     return result.x if result.success else initial
+
+
+def sector_matrix(holdings, schemes):
+    """Funds x sectors matrix of sector weights (rows follow `schemes`; each row sums to 1)."""
+    return holdings[holdings["Scheme Name"].isin(schemes)].pivot_table(
+        index="Scheme Name", columns="Sector", values="Weight", aggfunc="sum", fill_value=0
+    ).reindex(schemes).fillna(0)
+
+
+def optimize_portfolio_constrained(returns_df, sector_mix, sector_cap, max_fund_weight=1.0):
+    """Max-Sharpe weights with look-through sector caps (sector_mix columns) and a per-fund cap.
+
+    Returns (weights, success). On failure the weights are an equal split, so callers should check `success`.
+    """
+    n = len(returns_df.columns)
+    mix = sector_mix.values
+
+    def neg_sharpe(w):
+        return -calculate_portfolio_metrics(w, returns_df)[2]
+
+    constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1}]
+    if mix.shape[1]:
+        # one inequality per capped sector: cap - sum_i w_i * mix[i, j] >= 0
+        constraints.append({"type": "ineq", "fun": lambda x: sector_cap - x @ mix})
+
+    initial = np.array([1 / n] * n)
+    result = minimize(neg_sharpe, initial, method="SLSQP",
+                      bounds=tuple((0, max_fund_weight) for _ in range(n)), constraints=constraints)
+    return (result.x, True) if result.success else (initial, False)
 
 
 def generate_efficient_frontier(returns_df, n_points=50):
@@ -948,21 +1003,32 @@ def calculate_sip(monthly_amount, expected_return, years):
     return future_value, total_invested, wealth_gained
 
 
-def calculate_goal_probability(target, monthly_sip, years, historical_returns):
-    """Monte Carlo simulation for goal achievement probability"""
-    n_simulations = 1000
-    months = years * 12
-    successes = 0
-    
-    for _ in range(n_simulations):
-        portfolio_value = 0
-        for month in range(months):
-            monthly_return = np.random.choice(historical_returns)
-            portfolio_value = (portfolio_value + monthly_sip) * (1 + monthly_return/12)
-        if portfolio_value >= target:
-            successes += 1
-    
-    return successes / n_simulations
+def calculate_goal_probability(target, monthly_sip, years, daily_returns,
+                               periods_per_year=None, n_simulations=1000, seed=None):
+    """Monte Carlo (bootstrap) simulation of goal achievement.
+
+    Each simulated month compounds k randomly drawn historical daily returns,
+    where k = periods_per_year / 12, so monthly volatility scales correctly
+    (by sqrt(k)) instead of multiplying a single daily return by k.
+
+    Returns (probability, 5th / 50th / 95th percentile of the final corpus).
+    """
+    r = np.asarray(daily_returns, dtype=float)
+    r = r[np.isfinite(r)]
+    ppy = periods_per_year or TRADING_DAYS
+    k = max(1, int(round(ppy / 12)))
+    months = int(years * 12)
+    rng = np.random.default_rng(seed)
+
+    values = np.zeros(n_simulations)
+    for m in range(months):
+        draws = rng.choice(r, size=(n_simulations, k))
+        monthly_return = np.prod(1 + draws, axis=1) - 1
+        values = (values + monthly_sip) * (1 + monthly_return)
+
+    prob = float((values >= target).mean())
+    p5, p50, p95 = np.percentile(values, [5, 50, 95])
+    return prob, p5, p50, p95
 
 
 # ==================== LIGHT THEME CHART CONFIG ====================
@@ -1139,6 +1205,129 @@ def create_efficient_frontier_chart(frontier_rets, frontier_vols, current_ret, c
     return apply_mono_layout(fig)
 
 
+# ==================== LIVE DATA (mfapi.in) ====================
+MFAPI_BASE = "https://api.mfapi.in/mf"
+LIVE_MAX_FUNDS = 10
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def search_schemes(query: str) -> dict:
+    """Search AMFI schemes by name. Returns {scheme_code: scheme_name}."""
+    resp = requests.get(f"{MFAPI_BASE}/search", params={"q": query}, timeout=15)
+    resp.raise_for_status()
+    return {int(r["schemeCode"]): r["schemeName"] for r in resp.json()[:50]}
+
+
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def fetch_scheme_nav(code: int):
+    """Fetch full NAV history for one scheme. Returns (scheme_name, amfi_category, DataFrame[Date, NAV])."""
+    resp = requests.get(f"{MFAPI_BASE}/{code}", timeout=30)
+    resp.raise_for_status()
+    payload = resp.json()
+    nav = pd.DataFrame(payload["data"])
+    nav["Date"] = pd.to_datetime(nav["date"], format="%d-%m-%Y", errors="coerce")
+    nav["NAV"] = pd.to_numeric(nav["nav"], errors="coerce")
+    nav = nav.dropna(subset=["Date", "NAV"])[["Date", "NAV"]]
+    meta = payload["meta"]
+    return meta["scheme_name"], meta.get("scheme_category", ""), nav
+
+
+def map_amfi_category(amfi_category: str) -> str:
+    """Map an AMFI scheme category (e.g. 'Equity Scheme - Mid Cap Fund') onto the app's category names.
+
+    Categories with no app equivalent keep their AMFI sub-category label, e.g. 'Large & Mid Cap'.
+    """
+    c = amfi_category.lower()
+    rules = [
+        (("index", "etf"), "Index"),
+        (("hybrid", "arbitrage"), "Hybrid"),
+        (("debt", "income", "liquid", "gilt", "money market", "overnight"), "Debt"),
+        (("small cap",), "Small Cap"),
+        (("large & mid",), None),
+        (("mid cap",), "Mid Cap"),
+        (("large cap",), "Large Cap"),
+        (("flexi", "multi cap"), "Flexi Cap"),
+        (("value", "contra", "dividend yield"), "Value"),
+        (("sectoral", "thematic"), "Sectoral"),
+    ]
+    for keys, label in rules:
+        if any(k in c for k in keys):
+            if label:
+                return label
+            break
+    sub = amfi_category.split(" - ")[-1].strip()
+    sub = sub[:-5].strip() if sub.lower().endswith(" fund") else sub
+    return sub or "Other"
+
+
+# ==================== SECTOR EXPOSURE ====================
+SECTOR_CONCENTRATION_LIMIT = 0.30
+# Buckets that are asset classes rather than equity sectors; excluded from sector caps by default
+NON_EQUITY_BUCKETS = {"Cash", "Government Securities", "Corporate Bonds", "Money Market", "Gold"}
+
+
+def load_holdings(source) -> pd.DataFrame:
+    """Read a holdings CSV (Scheme Name, Sector, Weight) and normalise each scheme to 100%."""
+    h = pd.read_csv(source)
+    h.columns = [c.strip() for c in h.columns]
+    if not {"Scheme Name", "Sector", "Weight"}.issubset(h.columns):
+        raise ValueError("Holdings CSV must contain: Scheme Name, Sector, Weight")
+    h["Weight"] = pd.to_numeric(h["Weight"], errors="coerce")
+    h = h.dropna(subset=["Weight"])
+    h = h.groupby(["Scheme Name", "Sector"], as_index=False)["Weight"].sum()
+    h["Weight"] = h["Weight"] / h.groupby("Scheme Name")["Weight"].transform("sum")
+    return h
+
+
+def portfolio_sector_exposure(holdings, fund_weights):
+    """Look-through exposure: sum of fund weight x fund's sector weight. Returns a Series summing to 1."""
+    w = pd.Series(fund_weights, name="FundWeight")
+    h = holdings[holdings["Scheme Name"].isin(w.index)].copy()
+    h["Exposure"] = h["Weight"] * h["Scheme Name"].map(w)
+    exposure = h.groupby("Sector")["Exposure"].sum()
+    return (exposure / exposure.sum()).sort_values(ascending=False)
+
+
+def herfindahl_index(exposure) -> float:
+    """HHI on a weight vector summing to 1: 1/n (even spread) to 1 (single bucket)."""
+    return float((np.asarray(exposure) ** 2).sum())
+
+
+def sector_overlap_matrix(holdings, schemes):
+    """Pairwise overlap = sum over sectors of min(weight_a, weight_b); 1 means identical sector mix."""
+    mix = holdings[holdings["Scheme Name"].isin(schemes)].pivot_table(
+        index="Scheme Name", columns="Sector", values="Weight", aggfunc="sum", fill_value=0
+    ).reindex(schemes).fillna(0)
+    vals = mix.values
+    overlap = np.minimum(vals[:, None, :], vals[None, :, :]).sum(axis=2)
+    return pd.DataFrame(overlap, index=schemes, columns=schemes)
+
+
+def plot_sector_treemap(exposure):
+    df = exposure.mul(100).rename("Exposure (%)").reset_index()
+    fig = px.treemap(df, path=["Sector"], values="Exposure (%)", color="Exposure (%)",
+                     color_continuous_scale=["#dbeafe", "#2563eb"], title="LOOK-THROUGH SECTOR EXPOSURE")
+    fig.update_traces(texttemplate="%{label}<br>%{value:.1f}%")
+    return apply_mono_layout(fig)
+
+
+def plot_sector_stack(holdings, fund_weights):
+    w = pd.Series(fund_weights)
+    h = holdings[holdings["Scheme Name"].isin(w.index)].copy()
+    h["Contribution (%)"] = h["Weight"] * h["Scheme Name"].map(w) * 100
+    fig = px.bar(h, x="Contribution (%)", y="Sector", color="Scheme Name", orientation="h",
+                 title="SECTOR EXPOSURE BY FUND", color_discrete_sequence=VIBRANT_COLORS)
+    fig.update_layout(barmode="stack", yaxis={"categoryorder": "total ascending"})
+    return apply_mono_layout(fig)
+
+
+def plot_overlap_heatmap(overlap_df):
+    fig = px.imshow(overlap_df.mul(100).round(0), text_auto=True, zmin=0, zmax=100,
+                    color_continuous_scale=["#ffffff", "#2563eb"], aspect="auto",
+                    title="SECTOR OVERLAP BETWEEN FUNDS (%)")
+    return apply_mono_layout(fig)
+
+
 # ==================== CATEGORY CLASSIFICATION ====================
 CATEGORY_KEYWORDS = {
     "Large Cap": ["largecap", "large cap", "large-cap", "bluechip", "nifty 50", "sensex"],
@@ -1180,9 +1369,9 @@ def assign_categories(metrics_df: pd.DataFrame) -> pd.DataFrame:
 
 # ==================== CATEGORY METRICS (CACHED) ====================
 @st.cache_data
-def compute_category_metrics(_metrics_df):
+def compute_category_metrics(metrics_df_in):
     """Aggregate metrics per category — fully vectorised."""
-    agg = _metrics_df.groupby("Category").agg(
+    agg = metrics_df_in.groupby("Category").agg(
         AvgCAGR=("CAGR", "mean"),
         AvgSharpe=("Sharpe", "mean"),
         AvgVolatility=("Volatility", "mean"),
@@ -1194,10 +1383,10 @@ def compute_category_metrics(_metrics_df):
 
 
 @st.cache_data
-def top_fund_per_category(_metrics_df):
+def top_fund_per_category(metrics_df_in):
     """Best fund in each category by MFScore."""
-    idx = _metrics_df.groupby("Category")["MFScore"].idxmax()
-    return _metrics_df.loc[idx, ["Category", "Scheme", "CAGR", "Sharpe", "MFScore"]].reset_index(drop=True)
+    idx = metrics_df_in.groupby("Category")["MFScore"].idxmax()
+    return metrics_df_in.loc[idx, ["Category", "Scheme", "CAGR", "Sharpe", "MFScore"]].reset_index(drop=True)
 
 
 # ==================== CATEGORY CHART BUILDERS ====================
@@ -1404,6 +1593,7 @@ NAV_GOALS = "05  Goal Planner"
 NAV_EXPORT = "06  Export & Reports"
 NAV_CATEGORIES = "07  Category Analysis"
 NAV_ADVISOR = "08  Smart Advisor"
+NAV_SECTORS = "09  Sector Exposure"
 
 NAV_MODULES = [
     NAV_DASHBOARD,
@@ -1414,6 +1604,7 @@ NAV_MODULES = [
     NAV_EXPORT,
     NAV_CATEGORIES,
     NAV_ADVISOR,
+    NAV_SECTORS,
 ]
 
 # Sidebar - Institutional Command Center
@@ -1423,7 +1614,7 @@ st.sidebar.markdown("""
     <div class="sidebar-brand-subtitle">Portfolio Analysis & Optimization</div>
     <div class="sidebar-brand-badge">
         <span class="live-dot"></span>
-        <span>Online · 252 Trading Days</span>
+        <span>Online · Auto-annualised</span>
     </div>
 </div>
 <p class="sidebar-section-header">Navigation</p>
@@ -1465,8 +1656,10 @@ risk_profile = st.sidebar.selectbox(
 )
 top_k = st.sidebar.slider("Funds to Recommend", 1, 10, 5)
 
-# Demo mode toggle placed towards the last after Risk Profile, with NO '?' tooltip
-demo_mode = st.sidebar.checkbox("Demo Mode", value=True)
+DATA_DEMO, DATA_LIVE, DATA_UPLOAD = "Demo", "Live (AMFI)", "Upload CSV"
+data_source = st.sidebar.radio("Data Source", [DATA_DEMO, DATA_LIVE, DATA_UPLOAD], horizontal=True)
+demo_mode = data_source == DATA_DEMO
+live_categories = {}
 
 if demo_mode:
     # Load sample data
@@ -1478,12 +1671,77 @@ if demo_mode:
     except Exception as e:
         st.sidebar.error(f"Could not load demo data: {e}")
         st.stop()
+elif data_source == DATA_LIVE:
+    selected = st.session_state.setdefault("live_selected", {})
+    live_box = st.expander("Live fund selection (AMFI)", expanded=len(selected) < 2)
+    query = live_box.text_input("Search funds", placeholder="e.g. nifty 50 direct growth, liquid", key="live_query")
+    results = {}
+    if len(query.strip()) >= 3:
+        try:
+            results = search_schemes(query.strip())
+        except requests.RequestException as e:
+            live_box.error(f"Fund search failed: {e}")
+        if not results:
+            live_box.caption("No funds found.")
+    if results:
+        pick = live_box.selectbox("Search results", list(results), format_func=lambda c: results[c], key="live_pick")
+        if live_box.button("Add fund", disabled=len(selected) >= LIVE_MAX_FUNDS):
+            selected[pick] = results[pick]
+    chosen = live_box.multiselect(
+        f"Selected funds (2-{LIVE_MAX_FUNDS})", list(selected), default=list(selected),
+        format_func=lambda c: selected[c],
+    )
+    names = {c: selected[c] for c in chosen}
+    st.session_state["live_selected"] = names
+    history_years = live_box.slider("History (years)", 1, 10, 5, key="live_years")
+    if len(chosen) < 2:
+        st.info("Search for a fund above, press Add fund, and add at least 2 funds to load live NAV data from AMFI.")
+        st.stop()
+
+    frames = []
+    with st.spinner("Fetching NAV history..."):
+        for code in chosen:
+            try:
+                name, amfi_cat, nav = fetch_scheme_nav(code)
+            except (requests.RequestException, KeyError, ValueError) as e:
+                st.sidebar.error(f"Could not load {names[code]}: {e}")
+                continue
+            nav = nav.assign(**{"Scheme Name": name})
+            frames.append(nav[["Scheme Name", "Date", "NAV"]])
+            live_categories[name] = map_amfi_category(amfi_cat)
+    if len(frames) < 2:
+        st.error("Could not load enough funds to analyse.")
+        st.stop()
+    df_raw = pd.concat(frames, ignore_index=True)
+    df_raw = df_raw[df_raw["Date"] >= df_raw["Date"].max() - pd.DateOffset(years=history_years)]
+    latest = df_raw.groupby("Scheme Name")["Date"].max()
+    stale = latest[latest < latest.max() - pd.Timedelta(days=10)]
+    if not stale.empty:
+        st.sidebar.warning("Excluded, no recent NAV (scheme may be discontinued): "
+                           + ", ".join(f"{n} (last {d:%d %b %Y})" for n, d in stale.items()))
+        df_raw = df_raw[~df_raw["Scheme Name"].isin(stale.index)]
+        if df_raw["Scheme Name"].nunique() < 2:
+            st.error("Fewer than 2 active funds selected. Pick funds with a current NAV.")
+            st.stop()
+    st.sidebar.caption(f"Source: AMFI via mfapi.in · latest NAV {df_raw['Date'].max():%d %b %Y}")
 else:
     uploaded_file = st.sidebar.file_uploader("Upload NAV CSV", type=["csv"])
     if uploaded_file is None:
-        st.info("Upload a CSV with columns: **Scheme Name**, **Date**, **NAV** or enable Demo Mode!")
+        st.info("Upload a CSV with columns: **Scheme Name**, **Date**, **NAV**, or switch the Data Source to Demo or Live.")
         st.stop()
     df_raw = pd.read_csv(uploaded_file)
+
+# Optional holdings data (sector look-through)
+holdings_df = None
+try:
+    if demo_mode:
+        holdings_df = load_holdings(os.path.join(script_dir, "mutual_funds_holdings_dummy.csv"))
+    else:
+        holdings_file = st.sidebar.file_uploader("Upload Holdings CSV (optional)", type=["csv"])
+        if holdings_file is not None:
+            holdings_df = load_holdings(holdings_file)
+except Exception as e:
+    st.sidebar.error(f"Could not load holdings: {e}")
 
 # Process data
 df_raw.columns = [c.strip() for c in df_raw.columns]
@@ -1497,6 +1755,9 @@ df_raw = df_raw.dropna(subset=["Date"])
 df_raw = df_raw.sort_values(["Scheme Name", "Date"])
 df_raw["Return"] = df_raw.groupby("Scheme Name")["NAV"].pct_change()
 df = df_raw.dropna(subset=["Return"])
+
+# Annualise using the data's actual sampling rate (trading days vs calendar days)
+TRADING_DAYS = infer_periods_per_year(df_raw)
 
 if df.empty:
     st.error("Not enough NAV history to compute metrics.")
@@ -1517,6 +1778,8 @@ st.sidebar.markdown("""
 
 # Assign categories to metrics
 metrics_df = assign_categories(metrics_df)
+if live_categories:
+    metrics_df["Category"] = metrics_df["Scheme"].map(live_categories).fillna(metrics_df["Category"])
 
 # ==================== MODULE 1: DASHBOARD ====================
 if selected_module == NAV_DASHBOARD:
@@ -1705,23 +1968,59 @@ elif selected_module == NAV_PORTFOLIO:
         st.markdown("---")
         st.markdown("#### Portfolio Optimization")
         
+        use_sector_caps = False
+        holdings_ready = holdings_df is not None and set(selected_funds) <= set(holdings_df["Scheme Name"])
+        if holdings_ready:
+            use_sector_caps = st.checkbox("Apply sector and fund caps", key="use_sector_caps")
+            if use_sector_caps:
+                cap_col1, cap_col2 = st.columns(2)
+                max_sector_pct = cap_col1.slider("Max exposure per sector (%)", 10, 100, 30, 5, key="max_sector_pct")
+                max_fund_pct = cap_col2.slider("Max weight per fund (%)", 10, 100, 100, 5, key="max_fund_pct")
+                mix_all = sector_matrix(holdings_df, selected_funds)
+                capped_sectors = st.multiselect(
+                    "Sectors to cap",
+                    [c for c in mix_all.columns if c not in NON_EQUITY_BUCKETS],
+                    default=[c for c in mix_all.columns if c not in NON_EQUITY_BUCKETS],
+                    key="capped_sectors",
+                )
+        elif holdings_df is not None:
+            st.caption("Sector caps are unavailable: some selected funds have no holdings data.")
+
         if st.button("Optimize for Maximum Sharpe"):
-            optimal_weights = optimize_portfolio(returns_pivot[selected_funds])
+            opt_ok = True
+            if use_sector_caps:
+                optimal_weights, opt_ok = optimize_portfolio_constrained(
+                    returns_pivot[selected_funds], mix_all[capped_sectors],
+                    max_sector_pct / 100, max_fund_pct / 100,
+                )
+            else:
+                optimal_weights = optimize_portfolio(returns_pivot[selected_funds])
+
+            if not opt_ok:
+                st.error("No allocation satisfies these caps for the selected funds. "
+                         "Raise the sector or fund cap, or add funds with a different sector mix.")
+            else:
             
-            st.markdown("**Optimal Allocation:**")
-            opt_df = pd.DataFrame({
-                "Fund": selected_funds,
-                "Current (%)": weight_array * 100,
-                "Optimal (%)": optimal_weights * 100
-            })
-            st.dataframe(opt_df.style.format({"Current (%)": "{:.1f}", "Optimal (%)": "{:.1f}"}))
+                st.markdown("**Optimal Allocation:**")
+                opt_df = pd.DataFrame({
+                    "Fund": selected_funds,
+                    "Current (%)": weight_array * 100,
+                    "Optimal (%)": optimal_weights * 100
+                })
+                st.dataframe(opt_df.style.format({"Current (%)": "{:.1f}", "Optimal (%)": "{:.1f}"}))
             
-            opt_ret, opt_vol, opt_sharpe = calculate_portfolio_metrics(optimal_weights, returns_pivot[selected_funds])
+                opt_ret, opt_vol, opt_sharpe = calculate_portfolio_metrics(optimal_weights, returns_pivot[selected_funds])
             
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Optimal Return", f"{opt_ret*100:.1f}%", f"{(opt_ret-port_ret)*100:.1f}%")
-            col2.metric("Optimal Volatility", f"{opt_vol*100:.1f}%", f"{(opt_vol-port_vol)*100:.1f}%")
-            col3.metric("Optimal Sharpe", f"{opt_sharpe:.2f}", f"{opt_sharpe-port_sharpe:.2f}")
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Optimal Return", f"{opt_ret*100:.1f}%", f"{(opt_ret-port_ret)*100:.1f}%")
+                col2.metric("Optimal Volatility", f"{opt_vol*100:.1f}%", f"{(opt_vol-port_vol)*100:.1f}%")
+                col3.metric("Optimal Sharpe", f"{opt_sharpe:.2f}", f"{opt_sharpe-port_sharpe:.2f}")
+
+                if use_sector_caps:
+                    opt_exposure = portfolio_sector_exposure(holdings_df, dict(zip(selected_funds, optimal_weights)))
+                    st.markdown("**Resulting sector exposure:**")
+                    st.dataframe(opt_exposure.rename("Exposure").to_frame().style.format({"Exposure": "{:.2%}"}),
+                                 use_container_width=True)
         
         # Correlation analysis
         st.markdown("---")
@@ -1903,12 +2202,25 @@ elif selected_module == NAV_GOALS:
         st.markdown("---")
         st.markdown("#### Goal Achievement Analysis")
         
-        # Historical returns from selected fund
+        # Simulate with the historical daily returns of the chosen fund or portfolio
         if len(metrics_df) > 0:
-            hist_returns = df["Return"].dropna().values
-            prob = calculate_goal_probability(target_amount, monthly_sip, target_years, hist_returns * TRADING_DAYS)
-            
+            EW_OPTION = "Equal-weighted portfolio of all funds"
+            sim_source = st.selectbox("Simulate using returns of",
+                                      [EW_OPTION] + metrics_df["Scheme"].tolist(), key="goal_sim_source")
+            ret_pivot = df.pivot_table(index="Date", columns="Scheme Name", values="Return")
+            if sim_source == EW_OPTION:
+                hist_returns = ret_pivot.dropna().mean(axis=1).values
+            else:
+                hist_returns = ret_pivot[sim_source].dropna().values
+
+            prob, p5, p50, p95 = calculate_goal_probability(
+                target_amount, monthly_sip, target_years, hist_returns, TRADING_DAYS, seed=42)
+
             st.metric("Achievement Probability", f"{prob*100:.0f}%")
+            pcol1, pcol2, pcol3 = st.columns(3)
+            pcol1.metric("Pessimistic (5th pct)", f"₹{p5:,.0f}")
+            pcol2.metric("Median", f"₹{p50:,.0f}")
+            pcol3.metric("Optimistic (95th pct)", f"₹{p95:,.0f}")
             
             if prob >= 0.8:
                 st.success("High probability of achieving your goal!")
@@ -2152,6 +2464,80 @@ elif selected_module == NAV_ADVISOR:
         - Debt/Hybrid buffer → smoother ride but caps upside.
         - This allocation balances these forces for your stated risk appetite.
         """)
+
+
+# ==================== MODULE 9: SECTOR EXPOSURE ====================
+elif selected_module == NAV_SECTORS:
+    st.markdown("""
+    <div class="step-indicator">
+        <div class="step-number">09</div>
+        <div class="step-content">
+            <div class="step-label">Sector Exposure</div>
+            <div class="step-title">Look-Through Sector Analysis & Overlap</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<p class="section-header">Sector Exposure</p>', unsafe_allow_html=True)
+
+    if holdings_df is None:
+        st.info("Upload a holdings CSV with columns **Scheme Name**, **Sector**, **Weight** "
+                "in the sidebar, or switch the Data Source to Demo.")
+    else:
+        covered = [f for f in metrics_df["Scheme"] if f in set(holdings_df["Scheme Name"])]
+        missing = sorted(set(metrics_df["Scheme"]) - set(covered))
+        if missing:
+            st.warning("No holdings data for: " + ", ".join(missing))
+
+        sector_funds = st.multiselect("Funds in portfolio", covered, default=covered, key="sector_funds")
+        if not sector_funds:
+            st.info("Select at least one fund.")
+        else:
+            st.markdown("#### Fund Weights (%)")
+            cols = st.columns(min(len(sector_funds), 4))
+            raw_w = {}
+            for i, fund in enumerate(sector_funds):
+                with cols[i % len(cols)]:
+                    raw_w[fund] = st.number_input(fund, 0.0, 100.0, round(100 / len(sector_funds), 2),
+                                                  step=5.0, key=f"sector_w_{fund}")
+            total_w = sum(raw_w.values())
+            if total_w <= 0:
+                st.error("Weights must sum to more than zero.")
+            else:
+                if abs(total_w - 100) > 0.01:
+                    st.caption(f"Weights sum to {total_w:.1f}%; normalised to 100% for the analysis.")
+                fund_weights = {f: w / total_w for f, w in raw_w.items()}
+
+                exposure = portfolio_sector_exposure(holdings_df, fund_weights)
+                hhi = herfindahl_index(exposure)
+                top_sector, top_weight = exposure.index[0], exposure.iloc[0]
+
+                k1, k2, k3 = st.columns(3)
+                k1.metric("Top Sector", top_sector, f"{top_weight:.1%}", delta_color="off")
+                k2.metric("Sectors Held", len(exposure))
+                k3.metric("Concentration (HHI)", f"{hhi:.3f}", help="1/n for an even spread, 1 for a single sector")
+
+                breaches = exposure[exposure > SECTOR_CONCENTRATION_LIMIT]
+                if not breaches.empty:
+                    st.warning("Concentration above {:.0%}: ".format(SECTOR_CONCENTRATION_LIMIT)
+                               + ", ".join(f"{s} ({w:.1%})" for s, w in breaches.items()))
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.plotly_chart(plot_sector_treemap(exposure), use_container_width=True, theme=None)
+                with c2:
+                    st.plotly_chart(plot_sector_stack(holdings_df, fund_weights), use_container_width=True, theme=None)
+
+                st.markdown("#### Exposure Table")
+                st.dataframe(exposure.rename("Exposure").to_frame().style.format({"Exposure": "{:.2%}"}),
+                             use_container_width=True)
+
+                if len(sector_funds) > 1:
+                    st.markdown("---")
+                    st.markdown("#### Fund Overlap")
+                    st.plotly_chart(plot_overlap_heatmap(sector_overlap_matrix(holdings_df, sector_funds)),
+                                    use_container_width=True, theme=None)
+                    st.caption("Overlap is the shared share of sector allocation between two funds. "
+                               "High values mean the two funds add little diversification to each other.")
 
 
 # Footer
